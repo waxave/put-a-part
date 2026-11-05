@@ -18,7 +18,7 @@ class ProcessingRunsController < ApplicationController
 
   def create
     run = Etl::SubmitRun.new.call(params[:input_file])
-    redirect_to processing_run_path(run), notice: t("notices.queued")
+    redirect_to processing_run_path(run), notice: t("notices.queued"), status: :see_other
   rescue Etl::SubmitRun::InvalidUpload => error
     redirect_to processing_runs_path, alert: error.message, status: :see_other
   end
