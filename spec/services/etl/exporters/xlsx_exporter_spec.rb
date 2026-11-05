@@ -65,11 +65,22 @@ RSpec.describe Etl::Exporters::XlsxExporter do
       file.write(bytes)
       file.flush
       rows = Roo::Spreadsheet.open(file.path).sheet("Atributos").each_row_streaming.map { |row| row.map { |cell| cell&.value } }
-      expect(rows.drop(1).map { |row| row.values_at(3, 4, 6) }).to eq([
+      data_rows = rows.drop(1).select { |row| row.first.present? }
+      expect(data_rows.map { |row| row.values_at(3, 4, 6) }).to eq([
         [ "Motor", "Código de motor", "KA24E" ], [ "Número", "Número de cilindros", 4 ]
       ])
       expect(rows.flatten).not_to include("Candidato", "Vehicle", "Nissan", "future_unknown_candidate")
     end
+  end
+
+  it "fails explicitly when a required versioned attribute definition is missing" do
+    product = { "sku" => "X-1", "brand" => "FRACO", "category" => "MOTOR", "source_row" => [ 1, "X-1" ] }
+    fact = { "type" => "engine_code_candidate", "confidence" => "candidate", "value" => "KA24E" }
+    AttributeDefinition.find_by!(catalog_key: "engine_code", source_version: described_class::ATTRIBUTE_CATALOG_VERSION).destroy!
+
+    expect do
+      described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: [ fact ]) ])
+    end.to raise_error(described_class::MissingAttributeDefinitions, /engine_code/)
   end
 
   it "omits conflicting values and collapses duplicate extractions" do
@@ -87,20 +98,21 @@ RSpec.describe Etl::Exporters::XlsxExporter do
       file.write(bytes)
       file.flush
       rows = Roo::Spreadsheet.open(file.path).sheet("Atributos").each_row_streaming.map { |row| row.map { |cell| cell&.value } }
-      expect(rows.drop(1).map { |row| row.values_at(4, 6) }).to eq([ [ "Código de motor", "KA24E" ] ])
+      data_rows = rows.drop(1).select { |row| row.first.present? }
+      expect(data_rows.map { |row| row.values_at(4, 6) }).to eq([ [ "Código de motor", "KA24E" ] ])
     end
   end
 
   it "preserves numeric-looking reviewed attribute values and part numbers as text" do
     product = { "sku" => "00123", "brand" => "BRAND", "category" => "Parts", "description" => "", "source_row" => [ 1, "00123" ],
-      "attributes" => [ { "attribute_class" => "Code", "name" => "Code", "unit" => nil, "value" => "00123" } ] }
+      "attributes" => [ { "attribute_class" => "Motor", "name" => "Código de motor", "unit" => nil, "value" => "00123" } ] }
     bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: []) ])
     Tempfile.create([ "catalog", ".xlsx" ]) do |file|
       file.binmode
       file.write(bytes)
       file.flush
       workbook = Roo::Spreadsheet.open(file.path)
-      expect(workbook.sheet("Atributos").row(2).values_at(0, 6)).to eq([ "00123", "00123" ])
+      expect(workbook.sheet("Atributos").row(2).first(7)).to eq([ "00123", "BRAND", "Parts", "Motor", "Código de motor", nil, "00123" ])
       expect(workbook.sheet("Catálogo").cell(2, 1)).to eq("00123")
       expect(workbook.sheet("Origen").cell(2, 2)).to eq("00123")
     end
@@ -124,7 +136,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
       expect(workbook[1].merged_cells.map(&:ref).map(&:to_s)).to include("A1:B1")
       expect(workbook[2].auto_filter.ref.to_s).to eq("A1:O1")
       expect(workbook[3].auto_filter.ref.to_s).to eq("A1:F1")
-      expect(workbook[4].auto_filter.ref.to_s).to eq("A1:G5")
+      expect(workbook[4].auto_filter.ref.to_s).to eq("A1:G4")
       expect(workbook[5].auto_filter.ref.to_s).to eq("A1:G2")
       expect(workbook[4].sheet_data[1][3].value).to eq("Motor")
       expect(workbook[4].sheet_data[1][4].value).to eq("Código de motor")

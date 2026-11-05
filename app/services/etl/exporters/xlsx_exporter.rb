@@ -5,6 +5,8 @@ require "tempfile"
 module Etl
   module Exporters
     class XlsxExporter
+      class MissingAttributeDefinitions < StandardError; end
+
       SCHEMA_VERSION = "2.1.0"
       ATTRIBUTE_CATALOG_VERSION = "attribute-catalog-v1"
       TEMPLATE_PATH = Rails.root.join("lib/catalog/output_template.xlsx").freeze
@@ -165,6 +167,11 @@ module Etl
 
         definitions = AttributeDefinition.where(catalog_key: pending.map { |_, key, _| key }.uniq,
           source_version: ATTRIBUTE_CATALOG_VERSION).index_by(&:catalog_key)
+        missing_keys = pending.map { |_, key, _| key }.uniq - definitions.keys
+        if missing_keys.any?
+          raise MissingAttributeDefinitions, "Missing #{ATTRIBUTE_CATALOG_VERSION} attribute definitions: #{missing_keys.sort.join(', ')}"
+        end
+
         pending.select { |_, key, value| definitions.key?(key) && !value.nil? }.group_by { |prefix, key, _| [ prefix, key ] }.filter_map do |(prefix, key), entries|
           values = entries.map(&:last).uniq
           next unless values.one?

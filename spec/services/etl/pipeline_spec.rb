@@ -79,7 +79,7 @@ RSpec.describe Etl::Pipeline do
     source.output_file.open do |file|
       workbook = Roo::Spreadsheet.open(file.path, extension: :xlsx)
       attributes = workbook.sheet("Atributos").each_row_streaming.map { |row| row.map { |cell| cell&.value } }
-      expect(attributes).to include(a_collection_including("2C4516+STD", "Diámetro", "mm", 89.0))
+      expect(attributes).to include([ "2C4516+STD", "HASTING", "ANILLOS", "Anillo", "Diámetro de anillo", "mm", 89.0 ])
       expect(workbook.sheet("Aplicaciones").cell(2, 1)).to be_nil
     end
   end
