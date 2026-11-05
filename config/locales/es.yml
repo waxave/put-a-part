@@ -1,0 +1,95 @@
+es:
+  languages:
+    en: English
+    es: Español
+  layout:
+    navigation: Navegación principal
+    runs: Procesamiento de archivos
+    language: Idioma
+  runs:
+    title: Procesamiento de archivos | Put a Part
+    heading: Procesamientos de archivos
+    workspace: Espacio de trabajo
+    intro: Convierte archivos de proveedores en catálogos trazables.
+    recent: Procesamientos recientes
+    showing: Mostrando hasta %{count}
+    empty: Aún no hay procesamientos. Elige un archivo para comenzar.
+    workbook: Archivo de Excel
+    status: Estado
+    progress: Progreso
+    created: Fecha de creación
+    details: Detalles
+    view: Ver procesamiento
+    source: Origen
+    part_number: Número de parte
+    brand: Marca
+  upload:
+    heading: Iniciar procesamiento
+    help: Elige un archivo XLSX de proveedor de hasta 20 MB. El procesamiento comienza automáticamente.
+    choose: Elegir archivo
+    status: Selecciona un archivo XLSX para comenzar.
+    invalid_type: Elige un archivo XLSX.
+    invalid_size: Elige un archivo de menos de 20 MB.
+    uploading: Subiendo %{filename}…
+  run:
+    title: Procesamiento %{id} | Put a Part
+    all_runs: Todos los procesamientos
+    heading: Procesamiento
+    download: Descargar XLSX
+    reprocess: Volver a procesar
+    cancel: Cancelar procesamiento
+    release: "Versión de conocimiento asociada: %{id}"
+    summary: Estado del procesamiento
+    stage: Etapa
+    processed: Procesados
+    warnings: Advertencias
+    progress: "Progreso: %{percent}%"
+    issues: Incidencias
+    records: Registros
+    no_records: Aún no se han procesado registros.
+    evidence: Evidencia y datos sin resolver
+    evidence_parser: analizador
+    evidence_rule: regla
+    view_evidence: Ver evidencia extraída (%{count})
+    source_row: "%{sheet}, fila %{row}"
+  pagination:
+    runs: Páginas de procesamientos
+    records: Páginas de registros
+    previous: Página anterior
+    next: Página siguiente
+    page: Página %{page}
+  statuses:
+    queued: En cola
+    processing: Procesando
+    cancel_requested: Cancelación solicitada
+    completed: Completado
+    completed_with_warnings: Completado con advertencias
+    awaiting_review: Pendiente de revisión
+    failed: Fallido
+    canceled: Cancelado
+    successful: Correcto
+    warning: Advertencia
+  stages:
+    detecting: Detectando formato
+    queued: En cola
+    extracting: Extrayendo datos
+    resolving: Resolviendo
+    awaiting_review: Pendiente de revisión
+    completed: Completado
+    failed: Fallido
+    canceled: Cancelado
+  notices:
+    queued: Archivo agregado a la cola de procesamiento.
+    cancellation_requested: Se solicitó cancelar el procesamiento.
+    already_finished: Este procesamiento ya finalizó.
+    reprocess_queued: Archivo agregado a la cola para volver a procesarlo.
+  errors:
+    upload_invalid: Elige un archivo XLSX válido de menos de 20 MB.
+    upload_archive_invalid: El archivo XLSX no es válido o supera el tamaño permitido.
+    upload_not_xlsx: El archivo no es un libro XLSX válido.
+    run_not_finished: Solo se pueden volver a procesar archivos finalizados que tengan el archivo original.
+    release_missing: No existe la versión de conocimiento seleccionada.
+    queue_failed: No se pudo agregar el procesamiento a la cola.
+  time:
+    formats:
+      short: "%d/%m/%Y %H:%M"

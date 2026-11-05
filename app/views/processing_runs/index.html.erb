@@ -1,0 +1,51 @@
+<% content_for :title, t("runs.title") %>
+<section class="page-heading">
+  <div>
+    <p class="section-label"><%= t("runs.workspace") %></p>
+    <h1><%= t("runs.heading") %></h1>
+    <p><%= t("runs.intro") %></p>
+  </div>
+</section>
+
+<section class="upload-panel" aria-labelledby="upload-heading">
+  <div>
+    <h2 id="upload-heading"><%= t("upload.heading") %></h2>
+    <p><%= t("upload.help") %></p>
+  </div>
+  <%= form_with url: processing_runs_path, multipart: true, class: "upload-form", data: { controller: "upload" } do |form| %>
+    <%= form.label :input_file, class: "button upload-picker" do %>
+      <%= t("upload.choose") %>
+      <%= form.file_field :input_file, accept: ".xlsx", required: true, class: "visually-hidden", aria: { describedby: "upload-status" }, data: { upload_target: "input", action: "change->upload#submit", upload_invalid_type_value: t("upload.invalid_type"), upload_invalid_size_value: t("upload.invalid_size"), upload_uploading_value: t("upload.uploading") } %>
+    <% end %>
+    <span id="upload-status" class="upload-status" role="status" aria-live="polite" data-upload-target="status"><%= t("upload.status") %></span>
+  <% end %>
+</section>
+
+<section class="ledger" aria-labelledby="runs-heading">
+  <div class="section-heading"><h2 id="runs-heading"><%= t("runs.recent") %></h2><span><%= t("runs.showing", count: 100) %></span></div>
+  <% if @runs.empty? %>
+    <p class="empty-state"><%= t("runs.empty") %></p>
+  <% else %>
+    <div class="table-wrap"><table>
+      <thead><tr><th><%= t("runs.workbook") %></th><th><%= t("runs.status") %></th><th><%= t("runs.progress") %></th><th><%= t("runs.created") %></th><th><span class="visually-hidden"><%= t("runs.details") %></span></th></tr></thead>
+      <tbody>
+        <% @runs.each do |run| %>
+          <tr>
+            <td><%= link_to(run.input_file.attached? ? run.input_file.filename.to_s : run.id, processing_run_path(run)) %></td>
+            <td><span class="status status-<%= run.status %>"><%= t("statuses.#{run.status}", default: run.status.humanize) %></span></td>
+            <td><%= run.progress_percent %>%</td>
+            <td><%= l(run.created_at, format: :short) %></td>
+            <td><%= link_to t("runs.view"), processing_run_path(run) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table></div>
+  <% end %>
+  <% if @page > 1 || @has_next_page %>
+    <nav class="pagination" aria-label="<%= t("pagination.runs") %>">
+      <%= link_to t("pagination.previous"), processing_runs_path(page: @page - 1) if @page > 1 %>
+      <span><%= t("pagination.page", page: @page) %></span>
+      <%= link_to t("pagination.next"), processing_runs_path(page: @page + 1) if @has_next_page %>
+    </nav>
+  <% end %>
+</section>

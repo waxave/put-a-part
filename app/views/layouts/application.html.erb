@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="<%= I18n.locale %>">
   <head>
     <title><%= content_for(:title) || "Put A Part" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -24,6 +24,22 @@
   </head>
 
   <body>
-    <%= yield %>
+    <header class="site-header">
+      <div class="header-inner">
+        <%= link_to "Put a Part", root_path, class: "brand" %>
+        <nav class="main-navigation" aria-label="<%= t("layout.navigation") %>">
+          <%= link_to t("layout.runs"), processing_runs_path %>
+          <div class="language-switcher" role="group" aria-label="<%= t("layout.language") %>">
+            <%= button_to t("languages.es"), locale_path(:es), method: :patch, class: (I18n.locale == :es ? "language-active" : nil), form: { class: "language-form" } %>
+            <%= button_to t("languages.en"), locale_path(:en), method: :patch, class: (I18n.locale == :en ? "language-active" : nil), form: { class: "language-form" } %>
+          </div>
+        </nav>
+      </div>
+    </header>
+    <main class="workspace">
+      <% if notice %><p class="flash" role="status"><%= notice %></p><% end %>
+      <% if alert %><p class="flash flash-error" role="alert"><%= alert %></p><% end %>
+      <%= yield %>
+    </main>
   </body>
 </html>

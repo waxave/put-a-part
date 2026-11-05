@@ -1,0 +1,69 @@
+<% content_for :title, t("run.title", id: @run.id) %>
+<% content_for :head do %>
+  <% unless @run.terminal? %><meta http-equiv="refresh" content="5"><% end %>
+<% end %>
+<%= link_to t("run.all_runs"), processing_runs_path, class: "back-link" %>
+<section class="page-heading detail-heading">
+  <div>
+    <p class="section-label"><%= t("run.heading") %></p>
+    <h1><%= @run.input_file.attached? ? @run.input_file.filename : t("runs.workbook") %></h1>
+    <p class="run-id"><%= @run.id %></p>
+  </div>
+  <div class="run-actions">
+    <% if @run.status.in?(%w[completed completed_with_warnings]) && @run.output_file.attached? %>
+      <%= link_to t("run.download"), download_processing_run_path(@run), class: "button" %>
+    <% end %>
+    <% if @run.terminal? && @run.input_file.attached? %>
+      <%= button_to t("run.reprocess"), reprocess_processing_run_path(@run), params: (@selected_release ? { knowledge_release_id: @selected_release.id } : {}), class: "button button-secondary" %>
+    <% elsif !@run.terminal? && @run.status != "cancel_requested" %>
+      <%= button_to t("run.cancel"), cancel_processing_run_path(@run), class: "button button-secondary" %>
+    <% end %>
+  </div>
+</section>
+
+<% if @selected_release %><p><%= t("run.release", id: @selected_release.id) %></p><% end %>
+
+<section class="run-summary" aria-label="<%= t("run.summary") %>">
+  <div><span><%= t("runs.status") %></span><strong><%= t("statuses.#{@run.status}", default: @run.status.humanize) %></strong></div>
+  <div><span><%= t("run.stage") %></span><strong><%= t("stages.#{@run.stage}", default: @run.stage.humanize) %></strong></div>
+  <div><span><%= t("run.processed") %></span><strong><%= @run.processed_records %> / <%= @run.total_records %></strong></div>
+  <div><span><%= t("run.warnings") %></span><strong><%= @run.warning_records %></strong></div>
+</section>
+<div class="progress-block"><label for="run-progress"><%= t("run.progress", percent: @run.progress_percent) %></label><progress id="run-progress" max="100" value="<%= @run.progress_percent %>"></progress></div>
+<% if @run.last_error_message.present? %><p class="flash flash-error" role="alert"><%= @run.last_error_message %></p><% end %>
+<% if @issues.any? %>
+  <section class="ledger"><h2><%= t("run.issues") %></h2><ul><% @issues.each do |issue| %><li>
+    <% if issue.processing_record %><%= t("run.source_row", sheet: issue.processing_record.source_sheet, row: issue.processing_record.source_row) %>: <% end %>
+    <%= issue.message %> (<%= issue.code %>)
+  </li><% end %></ul></section>
+<% end %>
+<section class="ledger">
+  <div class="section-heading"><h2><%= t("run.records") %></h2><span><%= t("runs.showing", count: 100) %></span></div>
+  <% if @records.empty? %><p class="empty-state"><%= t("run.no_records") %></p><% else %>
+    <div class="table-wrap"><table><thead><tr><th><%= t("runs.source") %></th><th><%= t("runs.part_number") %></th><th><%= t("runs.brand") %></th><th><%= t("runs.status") %></th><th><%= t("run.evidence") %></th></tr></thead><tbody>
+      <% @records.each do |record| %><tr>
+        <td><%= t("run.source_row", sheet: record.source_sheet, row: record.source_row) %></td><td><%= record.source_sku %></td>
+        <td><%= record.normalized_product["brand"] %></td><td><%= t("statuses.#{record.status}", default: record.status.humanize) %></td>
+        <td>
+          <%= record.unresolved.join(" ") %>
+          <% if record.facts.any? %>
+            <details class="record-evidence"><summary><%= t("run.view_evidence", count: record.facts.length) %></summary>
+              <% record.facts.each do |fact| %>
+                <p><strong><%= fact["type"] %></strong> · <%= t("run.evidence_parser") %> <%= fact["parser_id"] %>, <%= t("run.evidence_rule") %> <%= fact["rule_version"] %></p>
+                <pre><%= JSON.pretty_generate(fact["value"]) %></pre>
+                <p><%= t("run.source_row", sheet: fact.dig("source", "sheet"), row: fact.dig("source", "row")) %></p>
+              <% end %>
+            </details>
+          <% end %>
+        </td>
+      </tr><% end %>
+    </tbody></table></div>
+  <% end %>
+  <% if @page > 1 || @has_next_page %>
+    <nav class="pagination" aria-label="<%= t("pagination.records") %>">
+      <%= link_to t("pagination.previous"), processing_run_path(@run, page: @page - 1) if @page > 1 %>
+      <span><%= t("pagination.page", page: @page) %></span>
+      <%= link_to t("pagination.next"), processing_run_path(@run, page: @page + 1) if @has_next_page %>
+    </nav>
+  <% end %>
+</section>

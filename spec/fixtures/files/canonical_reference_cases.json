@@ -1,0 +1,27 @@
+[
+  {
+    "source": { "workbook": "output_prueba.xlsx", "sheet": "Origen", "row": 2, "sku": "2C4516+STD", "brand": "HASTING" },
+    "candidate_facts": [
+      { "type": "engine_code", "raw_value": "QR25DE" },
+      { "type": "ring_dimensions", "raw_value": "89X1.2X1.2X2" },
+      { "type": "variant", "raw_value": "STD" }
+    ]
+  },
+  {
+    "source": { "workbook": "output_prueba.xlsx", "sheet": "Origen", "row": 4, "sku": "44338+20", "brand": "TEIKIN" },
+    "candidate_facts": [
+      { "type": "engine_code", "raw_value": "KA24DE" },
+      { "type": "ring_widths", "raw_value": "1.2 1.2 2.5" },
+      { "type": "variant", "raw_value": "+20" }
+    ]
+  },
+  {
+    "source": { "workbook": "output_prueba.xlsx", "sheet": "Origen", "row": 9, "sku": "FSX-5840299", "brand": "FRACO" },
+    "candidate_facts": [
+      { "type": "engine_code", "raw_value": "QR25DE" },
+      { "type": "valve_count", "raw_value": "16 VAL" },
+      { "type": "head_gasket_material", "raw_value": "MLS" },
+      { "type": "diameter", "raw_value": "89MM" }
+    ]
+  }
+]

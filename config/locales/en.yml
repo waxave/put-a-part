@@ -1,31 +1,95 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
-#
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
 en:
-  hello: "Hello world"
+  languages:
+    en: English
+    es: Español
+  layout:
+    navigation: Main navigation
+    runs: Workbook runs
+    language: Language
+  runs:
+    title: Workbook runs | Put a Part
+    heading: Workbook runs
+    workspace: Workbook workspace
+    intro: Turn supplier workbooks into traceable catalog exports.
+    recent: Recent runs
+    showing: Showing up to %{count}
+    empty: No runs yet. Choose a workbook to get started.
+    workbook: Workbook
+    status: Status
+    progress: Progress
+    created: Created
+    details: Details
+    view: View run
+    source: Source
+    part_number: Part number
+    brand: Brand
+  upload:
+    heading: Start a run
+    help: Choose a supplier XLSX workbook, up to 20 MB. Processing starts automatically.
+    choose: Choose workbook
+    status: Select an XLSX file to start.
+    invalid_type: Choose an XLSX workbook.
+    invalid_size: Choose a workbook smaller than 20 MB.
+    uploading: Uploading %{filename}…
+  run:
+    title: Run %{id} | Put a Part
+    all_runs: All runs
+    heading: Processing run
+    download: Download XLSX
+    reprocess: Reprocess
+    cancel: Cancel run
+    release: "Knowledge release pinned to this run: %{id}"
+    summary: Run status
+    stage: Stage
+    processed: Processed
+    warnings: Warnings
+    progress: "Progress: %{percent}%"
+    issues: Issues
+    records: Records
+    no_records: No records processed yet.
+    evidence: Evidence and unresolved facts
+    evidence_parser: parser
+    evidence_rule: rule
+    view_evidence: View extracted evidence (%{count})
+    source_row: "%{sheet}, row %{row}"
+  pagination:
+    runs: Run pages
+    records: Record pages
+    previous: Previous page
+    next: Next page
+    page: Page %{page}
+  statuses:
+    queued: Queued
+    processing: Processing
+    cancel_requested: Cancellation requested
+    completed: Completed
+    completed_with_warnings: Completed with warnings
+    awaiting_review: Awaiting review
+    failed: Failed
+    canceled: Canceled
+    successful: Successful
+    warning: Warning
+  stages:
+    detecting: Detecting format
+    queued: Queued
+    extracting: Extracting
+    resolving: Resolving
+    awaiting_review: Awaiting review
+    completed: Completed
+    failed: Failed
+    canceled: Canceled
+  notices:
+    queued: Workbook queued for processing.
+    cancellation_requested: Cancellation requested.
+    already_finished: This run has already finished.
+    reprocess_queued: Workbook queued for reprocessing.
+  errors:
+    upload_invalid: Choose a valid XLSX workbook smaller than 20 MB.
+    upload_archive_invalid: The workbook archive is invalid or too large.
+    upload_not_xlsx: The file is not a valid XLSX workbook.
+    run_not_finished: Only finished runs with an input file can be reprocessed.
+    release_missing: The selected knowledge release does not exist.
+    queue_failed: Could not queue the run.
+  time:
+    formats:
+      short: "%b %-d, %H:%M"
