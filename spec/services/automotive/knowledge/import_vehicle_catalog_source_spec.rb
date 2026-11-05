@@ -86,7 +86,7 @@ RSpec.describe Automotive::Knowledge::ImportVehicleCatalogSource do
     expect(generation.year_end).to be_nil
     expect(engine.cylinder_count).to eq(4)
     expect(engine.specifications).to include("engine_specs" => [ { "key" => "ENGINE / Fuel", "value" => "Gasoline" } ])
-    expect(VehicleReferenceRecord.find_by!(record_type: "engine").raw_record).to include("specs" => [
+    expect(VehicleReferenceRecord.find_by!(source_record_id: "engine:1").raw_record).to include("specs" => [
       { "key" => "ENGINE / Fuel", "value" => "Gasoline" }
     ])
     conflicting_record = VehicleReferenceRecord.find_by!(source_record_id: "engine:2")
