@@ -1,0 +1,21 @@
+# Unified vehicle catalog
+
+- **Status:** Initial local import/search slice implemented; data-rights and standards work remains open
+- **Goal:** Normalize heterogeneous, locally supplied vehicle reference datasets into one deduplicated, searchable PostgreSQL catalog with traceable source identities, without false merges or unsupported ACES/PIES claims.
+- **Branch:** Current working branch (no branch switch requested)
+- **Background:** Inputs include gor3a vehicle-makes-models, VehiclesDB and NHTSA vPIC downloads. They have different structures and coverage. Existing `VehicleMake`, `VehicleModel` and `VehicleConfiguration` tables provide only part of the canonical model and retain one upstream identity each.
+- **Scope:** Canonical data dictionary/RFC; additive import provenance and raw staging schema; safe identity links and review status; PostgreSQL full-text search; local-only, idempotent gor3a and VehiclesDB import adapters.
+- **Non Scope:** Downloading source data, asserting source licenses, automatic fuzzy merges, verified part applications/interchanges, existing release mutation, official ACES/PIES certification or licensed Auto Care reference imports.
+- **Affected Areas:** `db/migrate`, vehicle reference models/services, `lib/tasks`, `spec`, `docs`.
+- **Tasks:**
+  - [x] Define canonical identity levels, provenance and source-specific constraints.
+  - [x] Add additive provenance/staging/search schema and models.
+  - [x] Implement dry-run local import and deterministic normalized staging contract.
+  - [x] Inspect and fixture the pinned SQLite schemas before source adapters.
+  - [x] Add adapter, idempotency and full-text search tests.
+  - [ ] Confirm market/kinds, data rights and licensed ACES/PIES target versions.
+- **Testing Plan:** Migration/schema checks; fixture-based importer tests; duplicate and conflict tests; full-text/exact-prefix search tests; verify reruns do not alter releases.
+- **Related RFCs:** [Unified vehicle catalog](../rfcs/unified-vehicle-catalog.md)
+- **Related ADRs:** None yet.
+- **Notes:** A database can guarantee uniqueness for defined keys, not semantic identity for ambiguous records. Uncertain records must remain reviewable.
+- **Current slice:** Dataset manifests, import runs, source-record provenance, reviewed aliases and the PostgreSQL full-text index are implemented. `automotive_catalog:import` supports local gor3a and VehiclesDB SQLite artifacts with dry-run by default and `APPLY=true` to persist. The vPIC download is excluded because NHTSA describes it as VIN-decoding-only, not a taxonomy source. Source data licenses and attribution still need review before redistribution; ACES/PIES conformance remains dependent on licensed Auto Care reference data.
