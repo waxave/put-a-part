@@ -1,2 +1,2 @@
 #!/usr/bin/env ruby
-exec "./bin/rails", "server", *ARGV
+exec "bundle", "exec", "foreman", "start", "-f", "Procfile.dev", "-p", ENV.fetch("PORT", "3000"), *ARGV

@@ -1,0 +1,7 @@
+:concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 5) %>
+:queues:
+  - [etl, 5]
+  - [default, 3]
+  - [imports, 1]
+  - [maintenance, 1]
+  - [validation, 1]
