@@ -1,6 +1,10 @@
 module Automotive
   module Knowledge
     class ImportVehicleReference
+      def self.call(records:, external_system:, source_version:, batch_size: 500)
+        new(batch_size: batch_size).call(records: records, external_system: external_system, source_version: source_version)
+      end
+
       def initialize(batch_size: 500)
         @batch_size = Integer(batch_size)
         raise ArgumentError, "Batch size must be positive" unless @batch_size.positive?

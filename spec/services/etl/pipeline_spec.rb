@@ -29,6 +29,22 @@ RSpec.describe Etl::Pipeline do
     end
   end
 
+  it "builds the Autofacts Part-shaped extraction candidate before research is queued" do
+    described_class.new(run, defer_export: true).call
+
+    expect(run.reload.stage).to eq("researching")
+    expect(run.processing_records).not_to be_empty
+    run.processing_records.each do |record|
+      part_candidate = record.normalized_product.fetch("extraction_fallback")
+      expect(part_candidate.keys).to match_array(Autofacts::Part.new(
+        brand_slug: nil, part_number: nil, brand: nil, description: nil, category: nil, subcategory: nil, grade: nil,
+        url: nil, attributes: [], attributes_count: 0, countries: [], applications: [], applications_count: 0,
+        years_range: nil
+      ).to_h.keys.map(&:to_s))
+    end
+    expect(run.processing_records.joins(:enrichment_requests)).to be_empty
+  end
+
   it "does not duplicate records when invoked again after completion" do
     2.times { described_class.new(run).call }
     expect(run.processing_records.count).to eq(5)

@@ -7,7 +7,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
     product = { "sku" => "X-123", "brand" => "Supplier Brand", "category" => "BOMBA DE ACEITE",
                 "description" => "NISSAN 4 CIL KA24DE", "source_row" => [ 1, "X-123" ] }
     record = instance_double(ProcessingRecord, normalized_product: product, facts: [])
-    bytes = described_class.new.call([ record ])
+    bytes = described_class.call([ record ])
 
     Tempfile.create([ "catalog", ".xlsx" ]) do |file|
       file.binmode
@@ -18,10 +18,29 @@ RSpec.describe Etl::Exporters::XlsxExporter do
     end
   end
 
+  it "uses localized system taxonomy, vehicle category, alpha-3 markets and omits internal interchange markers" do
+    product = { "sku" => "X-123", "brand" => "Brand", "category" => "PISTONES", "source_row" => [ 1, "X-123" ],
+      "applications" => [ { "manufacturer" => "Nissan", "model" => "Altima", "year" => 2010, "qualifiers" => { "market" => "USA" } } ],
+      "interchanges" => [ { "interchange_reference" => "ABC-1", "source_key" => "extracted_candidate" } ],
+      "catalog_fields" => { "category" => { "value" => "Automóvil" }, "system" => { "value" => "Motor" },
+        "subsystem" => { "value" => "Segmento de pistón" } } }
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: []) ])
+
+    Tempfile.create([ "localized-catalog", ".xlsx" ]) do |file|
+      file.binmode
+      file.write(bytes)
+      file.flush
+      workbook = Roo::Spreadsheet.open(file.path)
+      expect(workbook.sheet("Aplicaciones").cell(2, 15)).to eq("USA")
+      expect(workbook.sheet("Intercambios").cell(2, 6)).to be_nil
+      expect(workbook.sheet("Catálogo").row(2).first(5)).to eq([ "X-123", "Brand", "Automóvil", "Motor", "Segmento de pistón" ])
+    end
+  end
+
   it "treats supplier values that begin with an equals sign as text, not formulas" do
     product = { "sku" => "=1+1", "brand" => "Brand", "category" => "Parts",
                 "description" => "=2+2", "source_row" => [ 1, "=1+1" ] }
-    bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: []) ])
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: []) ])
 
     Tempfile.create([ "catalog", ".xlsx" ]) do |file|
       file.binmode
@@ -38,7 +57,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
                 "description" => "KA24E 12 VAL", "source_row" => [ 1, "FSX-5840301" ] }
     fact = { "type" => "source_product_attribute", "confidence" => "supplier_asserted",
              "value" => { "class" => "Número", "name" => "Número de válvulas", "unit" => nil, "value" => 12 } }
-    bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: [ fact ]) ])
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: [ fact ]) ])
 
     Tempfile.create([ "catalog", ".xlsx" ]) do |file|
       file.binmode
@@ -58,7 +77,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
       { "type" => "vehicle_candidate", "confidence" => "candidate", "value" => { "make" => "Nissan" } },
       { "type" => "future_unknown_candidate", "confidence" => "candidate", "value" => "unknown" }
     ]
-    bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: facts) ])
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: facts) ])
 
     Tempfile.create([ "catalog-attributes", ".xlsx" ]) do |file|
       file.binmode
@@ -79,7 +98,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
     AttributeDefinition.find_by!(catalog_key: "engine_code", source_version: described_class::ATTRIBUTE_CATALOG_VERSION).destroy!
 
     expect do
-      described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: [ fact ]) ])
+      described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: [ fact ]) ])
     end.to raise_error(described_class::MissingAttributeDefinitions, /engine_code/)
   end
 
@@ -91,7 +110,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
       { "type" => "cylinder_count_candidate", "confidence" => "candidate", "value" => 4 },
       { "type" => "cylinder_count_candidate", "confidence" => "candidate", "value" => 6 }
     ]
-    bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: facts) ])
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: facts) ])
 
     Tempfile.create([ "catalog-conflicts", ".xlsx" ]) do |file|
       file.binmode
@@ -106,7 +125,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
   it "preserves numeric-looking reviewed attribute values and part numbers as text" do
     product = { "sku" => "00123", "brand" => "BRAND", "category" => "Parts", "description" => "", "source_row" => [ 1, "00123" ],
       "attributes" => [ { "attribute_class" => "Motor", "name" => "Código de motor", "unit" => nil, "value" => "00123" } ] }
-    bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: []) ])
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: []) ])
     Tempfile.create([ "catalog", ".xlsx" ]) do |file|
       file.binmode
       file.write(bytes)
@@ -124,7 +143,7 @@ RSpec.describe Etl::Exporters::XlsxExporter do
     facts = Automotive::Parsers::DescriptionParser.call(product.fetch("description")).map do |fact|
       fact.stringify_keys.merge("confidence" => "candidate")
     end
-    bytes = described_class.new.call([ instance_double(ProcessingRecord, normalized_product: product, facts: facts) ])
+    bytes = described_class.call([ instance_double(ProcessingRecord, normalized_product: product, facts: facts) ])
 
     Tempfile.create([ "catalog-template", ".xlsx" ]) do |file|
       file.binmode

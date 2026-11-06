@@ -6,7 +6,7 @@ RSpec.describe Automotive::ProductExtractor do
       category_text: "JUEGO DE EMPAQUES", description: "4 CIL KA24E SOHC 12 VAL 89/03",
       structured_fields: { "source_row" => [ 6536, "FSX-5840301" ] }, metadata: { "sheet" => "Origen", "row" => 2 })
 
-    result = described_class.new.call(input)
+    result = described_class.call(input)
 
     expect(result.fetch(:product)).to include("sku" => "FSX-5840301", "brand" => "FRACO")
     expect(result.fetch(:facts)).to include(a_hash_including("type" => "engine_code_candidate", "value" => "KA24E",
@@ -21,7 +21,7 @@ RSpec.describe Automotive::ProductExtractor do
       category_text: "JUEGO DE EMPAQUES", description: "QJC20G FS-001225 NISSAN KA24E",
       structured_fields: { "source_row" => [ 1, "FSX-5840301" ] }, metadata: { "sheet" => "Origen", "row" => 2 })
 
-    result = described_class.new.call(input)
+    result = described_class.call(input)
     expect(result.fetch(:facts)).to include(a_hash_including("type" => "reference_candidate", "value" => "FS-001225", "confidence" => "candidate"))
     expect(result.fetch(:product)).not_to have_key("interchanges")
   end
@@ -31,7 +31,7 @@ RSpec.describe Automotive::ProductExtractor do
       category_text: "JUEGO DE EMPAQUES", description: "QJC20G FS-001225 NISSAN KA24E",
       structured_fields: { "source_row" => [ 2, "UNSEEN-987" ] }, metadata: { "sheet" => "Origen", "row" => 7 })
 
-    result = described_class.new.call(input)
+    result = described_class.call(input)
     expect(result.fetch(:product).fetch("sku")).to eq("UNSEEN-987")
     expect(result.fetch(:facts)).to include(a_hash_including("type" => "engine_code_candidate", "value" => "KA24E"))
     expect(result.fetch(:facts)).to include(a_hash_including("type" => "reference_candidate", "value" => "FS-001225"))

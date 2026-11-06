@@ -30,6 +30,7 @@
   <div><span><%= t("run.warnings") %></span><strong><%= @run.warning_records %></strong></div>
 </section>
 <div class="progress-block"><label for="run-progress"><%= t("run.progress", percent: @run.progress_percent) %></label><progress id="run-progress" max="100" value="<%= @run.progress_percent %>"></progress></div>
+<% if @run.stage.in?(%w[researching finalizing]) %><p role="status"><%= t("run.researching_help") %></p><% end %>
 <% if @run.last_error_message.present? %><p class="flash flash-error" role="alert"><%= @run.last_error_message %></p><% end %>
 <% if @issues.any? %>
   <section class="ledger"><h2><%= t("run.issues") %></h2><ul><% @issues.each do |issue| %><li>
@@ -46,12 +47,57 @@
         <td><%= record.normalized_product["brand"] %></td><td><%= t("statuses.#{record.status}", default: record.status.humanize) %></td>
         <td>
           <%= record.unresolved.join(" ") %>
-          <% if record.facts.any? %>
-            <details class="record-evidence"><summary><%= t("run.view_evidence", count: record.facts.length) %></summary>
+          <% record.enrichment_requests.each do |request| %>
+            <details class="record-evidence">
+              <summary><%= t("run.research_status") %>: <%= t("enrichment.statuses.#{request.status}", default: request.status.humanize) %></summary>
+              <% if request.result_data["reason"].present? %>
+                <% reason_key = "enrichment.reasons.#{request.result_data['reason_code']}" %>
+                <p><%= t(reason_key, default: request.result_data["reason"]) %></p>
+              <% end %>
+              <% if request.result_data["reported_result_count"].present? %>
+                <p><%= t("run.research_result_count", count: request.result_data["reported_result_count"], parsed: request.result_data["parsed_result_count"]) %></p>
+              <% end %>
+              <% if request.result_data["candidates"].present? %>
+                <p><%= t("run.research_candidates") %></p>
+                <ul><% request.result_data["candidates"].each do |candidate| %><li>
+                  <strong><%= candidate["part_number"] %></strong> · <%= candidate["brand"] %> · <%= candidate["description"] %>
+                </li><% end %></ul>
+              <% end %>
+              <% if request.result_data["autofacts_result"].present? %>
+                <h4><%= t("run.autofacts_raw_result") %></h4>
+                <pre><%= JSON.pretty_generate(request.result_data["autofacts_result"]) %></pre>
+              <% end %>
+              <% if request.last_error_message.present? %><p role="status"><%= request.last_error_message %></p><% end %>
+              <% observation = record.catalog_observations.find { |item| item.id == request.result_data["observation_id"] } %>
+              <% if observation %>
+                <p><%= link_to t("run.view_external_source"), observation.safe_source_url, target: "_blank", rel: "noopener noreferrer" if observation.safe_source_url.present? %></p>
+                <h4><%= t("run.normalized_claims") %></h4>
+                <pre><%= JSON.pretty_generate(observation.claims.first(20)) %></pre>
+              <% end %>
+            </details>
+          <% end %>
+          <% if record.facts.any? || record.normalized_product["extraction_fallback"].present? %>
+            <details class="record-evidence extracted-candidates"><summary><%= t("run.extracted_information", count: record.facts.length) %></summary>
               <% record.facts.each do |fact| %>
-                <p><strong><%= fact["type"] %></strong> · <%= t("run.evidence_parser") %> <%= fact["parser_id"] %>, <%= t("run.evidence_rule") %> <%= fact["rule_version"] %></p>
-                <pre><%= JSON.pretty_generate(fact["value"]) %></pre>
+                <p><strong><%= fact["type"] %></strong> · <%= fact["raw_value"] || JSON.generate(fact["value"]) %></p>
+                <% if fact["type"] == "vehicle_candidate" && fact["value"].is_a?(Hash) %>
+                  <% vehicle = fact["value"] %>
+                  <p><%= t("run.catalog_make", make: vehicle["make"]) %>
+                    <% if vehicle["source_make"].present? %> · <%= t("run.source_make", make: vehicle["source_make"]) %><% end %>
+                  </p>
+                  <% if vehicle["year_start"].present? || vehicle["year_end"].present? %>
+                    <p><%= [ vehicle["year_start"], vehicle["year_end"] ].compact.uniq.join("–") %></p>
+                  <% end %>
+                <% else %>
+                  <pre><%= JSON.pretty_generate(fact["value"]) %></pre>
+                <% end %>
+                <p><%= t("run.evidence_parser") %> <%= fact["parser_id"] %>, <%= t("run.evidence_rule") %> <%= fact["rule_version"] %></p>
                 <p><%= t("run.source_row", sheet: fact.dig("source", "sheet"), row: fact.dig("source", "row")) %></p>
+              <% end %>
+              <% fallback_result = record.normalized_product["extraction_fallback"] %>
+              <% if fallback_result.present? %>
+                <h4><%= t("run.extraction_fallback_result") %></h4>
+                <pre><%= JSON.pretty_generate(fallback_result) %></pre>
               <% end %>
             </details>
           <% end %>

@@ -9,10 +9,10 @@ RSpec.describe CatalogIntelligence::PersistExtraction do
         brand_text: "HASTINGS", category_text: "ANILLOS", description: "NISSAN SENTRA 99/04 QR20DE",
         structured_fields: { "source_row" => [] }, metadata: { "sheet" => "Origen", "row" => 2 })).fetch(:facts))
 
-    part = described_class.new.call(record)
+    part = described_class.call(record)
     other_variant = run.processing_records.create!(source_sheet: "Origen", source_row: 3, source_sku: "2C4516+20",
       normalized_product: record.normalized_product.merge("sku" => "2C4516+20"), facts: record.facts)
-    other_part = described_class.new.call(other_variant)
+    other_part = described_class.call(other_variant)
 
     expect(part.part_number).to eq("2C4516+STD")
     expect(other_part.part_number).to eq("2C4516+20")
@@ -32,7 +32,7 @@ RSpec.describe CatalogIntelligence::PersistExtraction do
     observation = record.catalog_observations.create!(source_key: "rockauto", source_url: "https://www.rockauto.com/en/partsearch/", source_sku: "X-1",
       claims: [ { "type" => "reference_candidate", "raw_value" => "OTHER | Y-2", "brand" => "OTHER", "part_number" => "Y-2" } ])
 
-    CatalogIntelligence::PersistObservation.new.call(observation)
+    CatalogIntelligence::PersistObservation.call(observation)
     assertion = record.catalog_assertions.sole
     expect(assertion).to have_attributes(assertion_type: "interchange_candidate", status: "candidate")
     expect(assertion.catalog_part.part_number).to eq("X-1")

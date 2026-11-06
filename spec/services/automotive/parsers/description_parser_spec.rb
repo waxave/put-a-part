@@ -3,7 +3,7 @@ require_relative "../../../../app/services/automotive/parsers/description_parser
 
 RSpec.describe Automotive::Parsers::DescriptionParser do
   it "extracts independent engine and application candidates from a supplier description" do
-    facts = described_class.new.call("NISSAN PICK UP 4 CIL 2.4 KA24E SOHC 12 VAL 89/03")
+    facts = described_class.call("NISSAN PICK UP 4 CIL 2.4 KA24E SOHC 12 VAL 89/03")
 
     expect(facts).to include(
       a_hash_including(type: "engine_code_candidate", value: "KA24E", raw_value: "KA24E"),
@@ -17,7 +17,7 @@ RSpec.describe Automotive::Parsers::DescriptionParser do
   end
 
   it "preserves multiple candidates without linking them together or expanding ambiguous years" do
-    facts = described_class.new.call("L4 L6 KA24DE L20B DOHC SOHC 8V 12V 76/14")
+    facts = described_class.call("L4 L6 KA24DE L20B DOHC SOHC 8V 12V 76/14")
 
     expect(facts.select { |fact| fact[:type] == "engine_code_candidate" }.map { |fact| fact[:value] }).to eq([ "KA24DE", "L20B" ])
     expect(facts.select { |fact| fact[:type] == "cylinder_count_candidate" }.map { |fact| fact[:value] }).to eq([ 4, 6 ])
@@ -26,21 +26,21 @@ RSpec.describe Automotive::Parsers::DescriptionParser do
   end
 
   it "does not treat supplier part references or unrelated numbers as verified engine codes" do
-    facts = described_class.new.call("QJC20G FS-001225 JC20 197 DIENTES")
+    facts = described_class.call("QJC20G FS-001225 JC20 197 DIENTES")
     expect(facts.map { |fact| fact[:type] }).not_to include("engine_code_candidate", "year_range_candidate")
   end
 
   it "handles case and whitespace variations while preserving original evidence" do
-    facts = described_class.new.call("nissan  4   cil ka24e sohc 12 val 89/03")
+    facts = described_class.call("nissan  4   cil ka24e sohc 12 val 89/03")
     expect(facts).to include(a_hash_including(type: "engine_code_candidate", value: "KA24E", raw_value: "ka24e"))
     expect(facts).to include(a_hash_including(type: "cylinder_count_candidate", value: 4))
   end
 
   it "extracts multiple displacement candidates without confusing ring dimensions" do
-    facts = described_class.new.call("L4 L6 1.8 2.4 2.0 KA24DE DOHC RAN 1.2 1.2 2.5")
+    facts = described_class.call("L4 L6 1.8 2.4 2.0 KA24DE DOHC RAN 1.2 1.2 2.5")
     values = facts.select { |fact| fact[:type] == "displacement_liters_candidate" }.map { |fact| fact[:value] }
     expect(values).to eq([ 1.8, 2.4, 2.0 ])
-    expect(described_class.new.call("ANILLOS 89X1.2X1.2X2").map { |fact| fact[:type] }).not_to include("displacement_liters_candidate")
+    expect(described_class.call("ANILLOS 89X1.2X1.2X2").map { |fact| fact[:type] }).not_to include("displacement_liters_candidate")
   end
 
   it "interprets two- and four-digit ranges with slash or dash using the cutoff-30 policy" do

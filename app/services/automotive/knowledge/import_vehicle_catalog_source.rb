@@ -4,6 +4,10 @@ require "json"
 module Automotive
   module Knowledge
     class ImportVehicleCatalogSource
+      def self.call(source:, path:, apply: false, batch_size: 500)
+        new(source: source, path: path, apply: apply, batch_size: batch_size).call
+      end
+
       class InvalidRecord < StandardError; end
 
       SOURCES = {

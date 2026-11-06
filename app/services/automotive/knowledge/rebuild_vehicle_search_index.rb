@@ -1,6 +1,10 @@
 module Automotive
   module Knowledge
     class RebuildVehicleSearchIndex
+      def self.call(batch_size: 1_000)
+        new(batch_size: batch_size).call
+      end
+
       def initialize(batch_size: 1_000)
         @batch_size = Integer(batch_size)
         raise ArgumentError, "Batch size must be positive" unless @batch_size.positive?

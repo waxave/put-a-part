@@ -9,7 +9,8 @@ class ProcessingRunsController < ApplicationController
   def show
     @run = ProcessingRun.find(params[:id])
     @page = [ [ params[:page].to_i, 1 ].max, 1_000_000 ].min
-    records = @run.processing_records.order(:source_sheet, :source_row, :id).offset((@page - 1) * 100).limit(101).to_a
+    records = @run.processing_records.includes(:enrichment_requests, :catalog_observations)
+      .order(:source_sheet, :source_row, :id).offset((@page - 1) * 100).limit(101).to_a
     @has_next_page = records.length > 100
     @records = records.first(100)
     @issues = @run.processing_issues.includes(:processing_record).order(:created_at, :id).limit(100)
@@ -17,7 +18,7 @@ class ProcessingRunsController < ApplicationController
   end
 
   def create
-    run = Etl::SubmitRun.new.call(params[:input_file])
+    run = Etl::SubmitRun.call(params[:input_file])
     redirect_to processing_run_path(run), notice: t("notices.queued"), status: :see_other
   rescue Etl::SubmitRun::InvalidUpload => error
     redirect_to processing_runs_path, alert: error.message, status: :see_other
@@ -40,7 +41,7 @@ class ProcessingRunsController < ApplicationController
   end
 
   def reprocess
-    run = Etl::ReprocessRun.new.call(ProcessingRun.find(params[:id]), knowledge_release_id: params[:knowledge_release_id])
+    run = Etl::ReprocessRun.call(ProcessingRun.find(params[:id]), knowledge_release_id: params[:knowledge_release_id])
     redirect_to processing_run_path(run), notice: t("notices.reprocess_queued"), status: :see_other
   rescue Etl::ReprocessRun::InvalidRun => error
     redirect_to processing_run_path(params[:id]), alert: error.message, status: :see_other

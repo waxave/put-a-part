@@ -12,6 +12,9 @@ class CatalogObservation < ApplicationRecord
 
   def safe_source_url
     uri = URI.parse(source_url.to_s)
+    return source_url if source_key == "autofacts" && uri.is_a?(URI::HTTPS) &&
+      %w[autofactsdb.com simepa.mx catalog.elginind.com].include?(uri.host) && uri.port == 443 &&
+      uri.userinfo.nil? && uri.query.nil? && uri.fragment.nil?
     return source_url if source_key == "rexite" && uri.is_a?(URI::HTTPS) && uri.host == "rexite.net" && uri.port == 443 && uri.userinfo.nil?
     return source_url if source_key == "hastings" && uri.is_a?(URI::HTTPS) && uri.host == "hastings.apacatalog.com" && uri.port == 443 && uri.userinfo.nil? && uri.path.match?(%r{\A/Home/partdetail/\d{1,20}\z}) && uri.query.nil? && uri.fragment.nil?
     return source_url if source_key == "rockauto" && CatalogIntelligence::Connectors::Rockauto.safe_url?(source_url)

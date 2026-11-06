@@ -5,7 +5,7 @@
 **Primary stack:** Ruby on Rails, PostgreSQL, Sidekiq, Redis, Active Storage, Roo, rubyXL  
 **Scope:** Extensible automotive catalog ingestion, interpretation, enrichment, reconciliation, and deterministic Excel export
 
-> **Current implementation note:** The external catalog research, review, and publish workflow described below has been removed from the application. Workbook processing now extracts candidates and exports immediately. This document remains a historical/proposed architecture reference; it does not describe current runtime behavior. The local vehicle reference catalog and historical run/release data are retained.
+> **Current implementation note:** This is a historical/proposed architecture reference, not a runtime contract. The application now performs automatic Autofacts research after extraction and before export, retaining its findings as candidates; the broader review/publish workflow and API described below are not current behavior. See [architecture](../ARCHITECTURE.md) for the implemented flow.
 
 ## 1. Executive Summary
 

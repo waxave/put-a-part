@@ -21,4 +21,15 @@ RSpec.describe CatalogObservation, type: :model do
       expect(observation.safe_source_url).to be_nil
     end
   end
+
+  it "allows only supported Autofacts source hosts for external links" do
+    observation = described_class.new(source_key: "autofacts", source_url: "https://autofactsdb.com/part/brand/X-1/")
+    expect(observation.safe_source_url).to eq(observation.source_url)
+
+    [ "http://autofactsdb.com/part/brand/X-1/", "https://autofactsdb.com:444/part/brand/X-1/",
+      "https://autofactsdb.com.evil.test/part/brand/X-1/", "https://autofactsdb.com/part/X-1/?next=evil" ].each do |url|
+      observation.source_url = url
+      expect(observation.safe_source_url).to be_nil
+    end
+  end
 end

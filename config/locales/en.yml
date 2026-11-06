@@ -38,6 +38,13 @@ en:
     download: Download XLSX
     reprocess: Reprocess
     cancel: Cancel run
+    research_status: Autofacts research
+    autofacts_raw_result: "Original Autofacts result (library format)"
+    normalized_claims: "Normalized claim summary (not the original response)"
+    researching_help: Researching part details and preparing the final workbook. Download becomes available when processing finishes.
+    research_candidates: Candidates
+    view_external_source: View Autofacts source
+    research_result_count: "Autofacts reported %{count} result(s); %{parsed} parsed."
     release: "Knowledge release pinned to this run: %{id}"
     summary: Run status
     stage: Stage
@@ -48,6 +55,10 @@ en:
     records: Records
     no_records: No records processed yet.
     evidence: Evidence and unresolved facts
+    extracted_information: "Extracted information: Candidates found (%{count})"
+    extraction_fallback_result: "Candidate built from extracted data (Autofacts Part structure)"
+    source_make: "Make in source file: %{make}"
+    catalog_make: "Matching catalog make: %{make}"
     evidence_parser: parser
     evidence_rule: rule
     view_evidence: View extracted evidence (%{count})
@@ -69,9 +80,24 @@ en:
     canceled: Canceled
     successful: Successful
     warning: Warning
+  enrichment:
+    statuses:
+      queued: Queued
+      researching: Researching
+      completed: Candidate details found
+      not_found: No match found
+      ambiguous: Ambiguous match
+      failed: Research failed
+    reasons:
+      match_found: An exact part-number and brand candidate was found.
+      no_search_results: Autofacts found no exact part-number and brand match.
+      ambiguous_match: Autofacts returned results but could not confirm a unique match.
+      direct_part_unavailable: The direct lookup was unavailable; a fallback search will be attempted.
   stages:
     detecting: Detecting format
     queued: Queued
+    researching: Researching part data
+    finalizing: Preparing final workbook
     extracting: Extracting
     resolving: Resolving
     awaiting_review: Awaiting review

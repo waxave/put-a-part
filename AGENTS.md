@@ -7,7 +7,7 @@
 - Minitest and RSpec, Roo, RuboCop, Brakeman, bundler-audit, importmap audit; Docker and generated Kamal configuration.
 - Hotwire (Turbo and Stimulus), import maps, Propshaft, Puma.
 
-The current application is a Spanish-default workbook processing UI with two XLSX input profiles, database-backed Spanish attribute definitions, candidate extraction and six-sheet export. Candidate vehicle/specification facts are not verified fitments or interchanges. Current behavior is documented in [README.md](README.md) and [ARCHITECTURE.md](ARCHITECTURE.md); the detailed ETL plan is historical/proposed and is not an implementation contract.
+The current application is a Spanish-default workbook processing UI with two XLSX input profiles, database-backed Spanish attribute definitions, candidate extraction, automatic Autofacts v2.3.0 research enqueueing after upload/reprocessing, and six-sheet export. Candidate vehicle/specification facts and external Autofacts claims are not verified fitments or interchanges. Current behavior is documented in [README.md](README.md) and [ARCHITECTURE.md](ARCHITECTURE.md); the detailed ETL plan is historical/proposed and is not an implementation contract.
 
 ## Commands
 
@@ -36,7 +36,7 @@ The current application is a Spanish-default workbook processing UI with two XLS
 - [README](README.md): setup and overview.
 - [Architecture](ARCHITECTURE.md): current system boundaries and invariants, followed by a clearly labeled historical target.
 - [Roadmap](ROADMAP.md): delivery status.
-- [Detailed architecture plan](docs/automotive-catalog-etl-architecture-plan.md): historical proposal; some components (including the API and external research workflow) are not current behavior.
+- [Detailed architecture plan](docs/automotive-catalog-etl-architecture-plan.md): historical proposal; the API and broader review/publishing workflow are not current behavior.
 - `docs/decisions/`, `docs/rfcs/`, `docs/features/`, `docs/fixes/`, `docs/refactors/`, `docs/chores/`, `docs/spikes/`, `docs/runbooks/`, and `docs/diagrams/`: topic-specific records.
 
 ## Branch conventions

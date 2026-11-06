@@ -2,6 +2,10 @@ module Automotive
   module Resolvers
     # Existing unversioned releases retain their original row-specific semantics.
     class ApplicationResolver
+      def self.call(entries:, sku:, brand:, source_sheet:, source_row:)
+        new(entries: entries).call(sku: sku, brand: brand, source_sheet: source_sheet, source_row: source_row)
+      end
+
       class UnknownIdentityVersion < StandardError; end
       IDENTITY_VERSION = "exact-variant-v1"
 

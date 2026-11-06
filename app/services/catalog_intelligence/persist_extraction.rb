@@ -1,5 +1,7 @@
 module CatalogIntelligence
   class PersistExtraction
+    include ServiceCall
+
     def call(record)
       part = persist_part(record)
       record.facts.each_with_index do |fact, index|
@@ -17,11 +19,10 @@ module CatalogIntelligence
 
       brand_name = product["brand"].to_s.strip
       brand_key = brand_name.downcase.gsub(/\s+/, " ")
-      identity = FindOrCreateIdentity.new
-      brand = identity.call(AutomotiveBrand, identity: { normalized_name: brand_key }, attributes: { name: brand_name })
+      brand = FindOrCreateIdentity.call(AutomotiveBrand, identity: { normalized_name: brand_key }, attributes: { name: brand_name })
       part_number = source_sku.to_s.strip
       part_key = part_number.upcase.gsub(/\s+/, "")
-      identity.call(CatalogPart, identity: { automotive_brand: brand, part_number_key: part_key },
+      FindOrCreateIdentity.call(CatalogPart, identity: { automotive_brand: brand, part_number_key: part_key },
         attributes: { part_number: part_number, product_category: product["category"], source_description: product["description"] })
     end
 

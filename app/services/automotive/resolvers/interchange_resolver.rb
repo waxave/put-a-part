@@ -1,6 +1,10 @@
 module Automotive
   module Resolvers
     class InterchangeResolver
+      def self.call(entries:, sku:, brand:)
+        new(entries: entries).call(sku: sku, brand: brand)
+      end
+
       def initialize(entries:)
         @entries = entries.select { |entry| entry["entry_type"] == "interchange" }
         unless @entries.all? { |entry| entry["identity_version"] == ApplicationResolver::IDENTITY_VERSION }

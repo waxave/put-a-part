@@ -1,5 +1,7 @@
 module Etl
   class ReprocessRun
+    include ServiceCall
+
     class InvalidRun < StandardError; end
 
     def call(original, knowledge_release_id: nil)

@@ -38,6 +38,13 @@ es:
     download: Descargar XLSX
     reprocess: Volver a procesar
     cancel: Cancelar procesamiento
+    research_status: Investigación de Autofacts
+    autofacts_raw_result: "Resultado original de Autofacts (formato de la biblioteca)"
+    normalized_claims: "Resumen normalizado de afirmaciones (no es la respuesta original)"
+    researching_help: Buscando datos de las piezas y preparando el archivo final. La descarga estará disponible al terminar.
+    research_candidates: Candidatos
+    view_external_source: Ver fuente de Autofacts
+    research_result_count: "Autofacts informó %{count} resultado(s); se interpretaron %{parsed}."
     release: "Versión de conocimiento asociada: %{id}"
     summary: Estado del procesamiento
     stage: Etapa
@@ -48,6 +55,10 @@ es:
     records: Registros
     no_records: Aún no se han procesado registros.
     evidence: Evidencia y datos sin resolver
+    extracted_information: "Información extraída: Se encontraron candidatos (%{count})"
+    extraction_fallback_result: "Candidato construido con datos extraídos (estructura Autofacts Part)"
+    source_make: "Marca indicada en el archivo: %{make}"
+    catalog_make: "Marca coincidente en el catálogo: %{make}"
     evidence_parser: analizador
     evidence_rule: regla
     view_evidence: Ver evidencia extraída (%{count})
@@ -69,9 +80,24 @@ es:
     canceled: Cancelado
     successful: Correcto
     warning: Advertencia
+  enrichment:
+    statuses:
+      queued: En cola
+      researching: Investigando
+      completed: Se encontraron detalles candidatos
+      not_found: No se encontraron coincidencias
+      ambiguous: Coincidencia ambigua
+      failed: Falló la investigación
+    reasons:
+      match_found: Se encontró un candidato con número de parte y marca exactos.
+      no_search_results: Autofacts no encontró una coincidencia exacta para el número de parte y la marca.
+      ambiguous_match: Autofacts encontró resultados, pero no pudo confirmar una coincidencia única.
+      direct_part_unavailable: La consulta directa no estuvo disponible; se intentará una búsqueda alternativa.
   stages:
     detecting: Detectando formato
     queued: En cola
+    researching: Investigando piezas
+    finalizing: Preparando archivo final
     extracting: Extrayendo datos
     resolving: Resolviendo
     awaiting_review: Pendiente de revisión

@@ -1,8 +1,10 @@
 module CatalogIntelligence
   class PersistObservation
+    include ServiceCall
+
     def call(observation)
       record = observation.processing_record
-      part = PersistExtraction.new.call(record)
+      part = PersistExtraction.call(record)
 
       observation.claims.each_with_index do |claim, index|
         next unless claim.is_a?(Hash)
@@ -42,10 +44,9 @@ module CatalogIntelligence
       return if claim["brand"].to_s.strip.blank? || claim["part_number"].to_s.strip.blank?
 
       brand_name = claim["brand"].to_s.strip
-      identity = FindOrCreateIdentity.new
-      brand = identity.call(AutomotiveBrand, identity: { normalized_name: brand_name.downcase.gsub(/\s+/, " ") }, attributes: { name: brand_name })
+      brand = FindOrCreateIdentity.call(AutomotiveBrand, identity: { normalized_name: brand_name.downcase.gsub(/\s+/, " ") }, attributes: { name: brand_name })
       number = claim["part_number"].to_s.strip
-      identity.call(CatalogPart, identity: { automotive_brand: brand, part_number_key: number.upcase.gsub(/\s+/, "") }, attributes: { part_number: number })
+      FindOrCreateIdentity.call(CatalogPart, identity: { automotive_brand: brand, part_number_key: number.upcase.gsub(/\s+/, "") }, attributes: { part_number: number })
     end
 
     def assertion_type(type)
@@ -61,20 +62,20 @@ module CatalogIntelligence
     def sync_existing_review(observation, index)
       application = ReviewedApplication.find_by(catalog_observation: observation, claim_index: index)
       if application
-        MarkAssertionReviewed.new.call(observation, claim_index: index,
+        MarkAssertionReviewed.call(observation, claim_index: index,
           value: { "manufacturer" => application.manufacturer, "model" => application.model, "year" => application.year })
       end
       attribute = ReviewedAttribute.find_by(catalog_observation: observation, claim_index: index)
       if attribute
-        MarkAssertionReviewed.new.call(observation, claim_index: index,
+        MarkAssertionReviewed.call(observation, claim_index: index,
           value: { "attribute_class" => attribute.attribute_class, "name" => attribute.name, "unit" => attribute.unit, "value" => attribute.value })
       end
       ReviewedCatalogField.where(catalog_observation: observation, claim_index: index).find_each do |field|
-        MarkAssertionReviewed.new.call(observation, claim_index: index, value: { "field" => field.field, "value" => field.value })
+        MarkAssertionReviewed.call(observation, claim_index: index, value: { "field" => field.field, "value" => field.value })
       end
       interchange = ReviewedInterchange.find_by(catalog_observation: observation, claim_index: index)
       if interchange
-        MarkAssertionReviewed.new.call(observation, claim_index: index,
+        MarkAssertionReviewed.call(observation, claim_index: index,
           value: { "reference" => interchange.reference, "brand" => interchange.brand, "evidence_url" => interchange.evidence_url })
       end
     end

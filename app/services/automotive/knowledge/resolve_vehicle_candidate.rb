@@ -1,6 +1,8 @@
 module Automotive
   module Knowledge
     class ResolveVehicleCandidate
+      include ServiceCall
+
       def call(candidate, external_system:, source_version:)
         candidate.vehicle_candidate_matches.where(external_system: external_system, source_version: source_version).delete_all
         return candidate.update!(resolution_status: "unresolved") if candidate.make_candidate.blank? || candidate.model_candidate.blank? || !candidate.model_year_start || !candidate.model_year_end

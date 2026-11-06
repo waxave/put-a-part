@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_05_000110) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_000112) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -159,6 +159,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_000110) do
     t.datetime "finished_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "result_data", default: {}, null: false
+    t.datetime "enqueued_at"
     t.index ["processing_record_id", "source_key"], name: "index_enrichment_requests_on_record_and_source", unique: true
     t.index ["processing_record_id"], name: "index_enrichment_requests_on_processing_record_id"
   end

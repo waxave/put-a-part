@@ -1,6 +1,10 @@
 module Automotive
   module Resolvers
     class AttributeResolver
+      def self.call(entries:, sku:, brand:, facts: [])
+        new(entries: entries).call(sku: sku, brand: brand, facts: facts)
+      end
+
       def initialize(entries:)
         @entries = entries.select { |entry| entry["entry_type"] == "attribute" }
         unless @entries.all? { |entry| entry["identity_version"] == ApplicationResolver::IDENTITY_VERSION }

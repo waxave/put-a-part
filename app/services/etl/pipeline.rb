@@ -5,11 +5,20 @@ require Rails.root.join("lib/catalog/workbook_contract")
 
 module Etl
   class Pipeline
+    def self.call(run, defer_export: false)
+      new(run, defer_export: defer_export).call
+    end
+
+    def self.finalize(run)
+      new(run).finalize
+    end
+
     class Canceled < StandardError; end
     CHECKPOINT_INTERVAL = 25
 
-    def initialize(run)
+    def initialize(run, defer_export: false)
       @run = run
+      @defer_export = defer_export
     end
 
     def call
@@ -24,6 +33,10 @@ module Etl
           connection.execute("SELECT pg_advisory_unlock(hashtextextended(#{lock_id}, 0))")
         end
       end
+    end
+
+    def finalize
+      export
     end
 
     private
@@ -43,13 +56,15 @@ module Etl
         end
         @run.update!(context.to_h.merge(input_sha256: Digest::SHA256.file(file.path).hexdigest, stage: "extracting", progress_percent: [ @run.progress_percent, 10 ].max))
         entries = @run.knowledge_release_id == "empty-v1" ? [] : KnowledgeRelease.find(@run.knowledge_release_id).entries
-        @application_resolver = Automotive::Resolvers::ApplicationResolver.new(entries: entries)
-        @attribute_resolver = Automotive::Resolvers::AttributeResolver.new(entries: entries)
-        @catalog_field_resolver = Automotive::Resolvers::CatalogFieldResolver.new(entries: entries)
-        @interchange_resolver = Automotive::Resolvers::InterchangeResolver.new(entries: entries)
+        @knowledge_entries = entries
         process_records(profile, workbook)
       end
-      export
+      check_cancellation!
+      if @defer_export
+        @run.update!(stage: "researching", progress_percent: [ @run.progress_percent, 80 ].max)
+      else
+        export
+      end
     rescue Canceled
       nil
     rescue FormatRegistry::UnknownFormat, FormatRegistry::AmbiguousFormat => error
@@ -117,13 +132,14 @@ module Etl
         check_cancellation!
         extracted = Automotive::ProductExtractor.call(input)
         product = extracted.fetch(:product)
-        product["applications"] = @application_resolver.call(source_sheet: input.metadata.fetch("sheet"), source_row: input.metadata.fetch("row"),
-          sku: product["sku"], brand: product["brand"])
-        resolved_attributes = @attribute_resolver.call(sku: product["sku"], brand: product["brand"], facts: extracted.fetch(:facts))
+        product["applications"] = Automotive::Resolvers::ApplicationResolver.call(entries: @knowledge_entries,
+          source_sheet: input.metadata.fetch("sheet"), source_row: input.metadata.fetch("row"), sku: product["sku"], brand: product["brand"])
+        resolved_attributes = Automotive::Resolvers::AttributeResolver.call(entries: @knowledge_entries, sku: product["sku"],
+          brand: product["brand"], facts: extracted.fetch(:facts))
         product["attributes"] = resolved_attributes.fetch(:attributes)
-        resolved_catalog = @catalog_field_resolver.call(sku: product["sku"], brand: product["brand"])
+        resolved_catalog = Automotive::Resolvers::CatalogFieldResolver.call(entries: @knowledge_entries, sku: product["sku"], brand: product["brand"])
         product["catalog_fields"] = resolved_catalog.fetch(:fields)
-        product["interchanges"] = @interchange_resolver.call(sku: product["sku"], brand: product["brand"])
+        product["interchanges"] = Automotive::Resolvers::InterchangeResolver.call(entries: @knowledge_entries, sku: product["sku"], brand: product["brand"])
         has_conflicts = resolved_attributes.fetch(:conflicts).any? || resolved_catalog.fetch(:conflicts).any?
         message = "Conflicting source evidence requires review; disputed values were not exported." if has_conflicts
         record = @run.processing_records.find_or_initialize_by(source_sheet: input.metadata.fetch("sheet"), source_row: input.metadata.fetch("row"))
@@ -141,7 +157,9 @@ module Etl
               details: { "source_sheet" => input.metadata.fetch("sheet"), "source_row" => input.metadata.fetch("row"), "source_sku" => input.sku })
           end
         end
-        CatalogIntelligence::PersistExtraction.new.call(record)
+        CatalogIntelligence::PersistExtraction.call(record)
+        product["extraction_fallback"] = CatalogIntelligence::BuildExtractedPartResult.call(record, product: product)
+        record.update!(normalized_product: product)
         processed_since_checkpoint += 1
         if processed_since_checkpoint >= CHECKPOINT_INTERVAL
           update_record_counts!
@@ -163,7 +181,7 @@ module Etl
 
     def export
       records = @run.processing_records.order(:source_sheet, :source_row).to_a
-      bytes = Etl::Exporters::XlsxExporter.new.call(records)
+      bytes = Etl::Exporters::XlsxExporter.call(records)
       check_cancellation!
       blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new(bytes), filename: "catalog-#{@run.id}.xlsx",
         content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

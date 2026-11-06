@@ -5,6 +5,8 @@ require "tempfile"
 module Etl
   module Exporters
     class XlsxExporter
+      include ServiceCall
+
       class MissingAttributeDefinitions < StandardError; end
 
       SCHEMA_VERSION = "2.1.0"
@@ -138,7 +140,9 @@ module Etl
         records.flat_map do |record|
           product = record.normalized_product
           product.fetch("interchanges", []).map do |entry|
-            [ product["sku"], product["brand"], product["category"], entry["interchange_reference"], entry["interchange_brand"], entry["source_key"] ]
+            origin = entry["origin"]
+            origin = nil if entry["source_key"] == "extracted_candidate"
+            [ product["sku"], product["brand"], product["category"], entry["interchange_reference"], entry["interchange_brand"], origin ]
           end
         end
       end
@@ -218,7 +222,10 @@ module Etl
           "Número de cilindros" => "cylinder_count", "Cilindrada" => "displacement_liters",
           "Número de válvulas" => "valve_count", "Tipo de árbol de levas" => "camshaft_type",
           "Diámetro" => "diameter", "Material de junta de culata" => "gasket_material",
-          "Número de dientes" => "tooth_count"
+          "Número de dientes" => "tooth_count", "Diameter" => "diameter", "Ring Diameter" => "ring_diameter",
+          "Ring Width 1" => "ring_width_1", "Ring Width 2" => "ring_width_2", "Ring Width 3" => "ring_width_3",
+          "Valve Count" => "valve_count", "Number of Valves" => "valve_count", "Tooth Count" => "tooth_count",
+          "Gasket Material" => "gasket_material"
         }[name]
       end
     end

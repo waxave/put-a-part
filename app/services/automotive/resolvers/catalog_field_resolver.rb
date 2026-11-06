@@ -1,6 +1,10 @@
 module Automotive
   module Resolvers
     class CatalogFieldResolver
+      def self.call(entries:, sku:, brand:)
+        new(entries: entries).call(sku: sku, brand: brand)
+      end
+
       def initialize(entries:)
         @entries = entries.select { |entry| entry["entry_type"] == "catalog_field" }
         unless @entries.all? { |entry| entry["identity_version"] == ApplicationResolver::IDENTITY_VERSION && Automotive::Domain::CatalogFields::NAMES.include?(entry["field"]) }

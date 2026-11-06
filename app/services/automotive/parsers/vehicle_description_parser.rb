@@ -18,15 +18,25 @@ module Automotive
           boundary = makes[index + 1]&.begin(0) || text.length
           range = range_for(match, boundary, year_ranges, allow_preceding: index.zero?)
           make = normalize_make(match[0])
-          model = model_candidate(text, match.end(0), range, boundary)
-          next if model.nil? || model.empty?
-
-          { type: "vehicle_candidate", value: { "make" => make, "model" => model,
-            "year_start" => range&.fetch(:start_year, nil), "year_end" => range&.fetch(:end_year, nil),
-            "year_range_status" => range&.fetch(:interpretation_status, nil) }.compact,
-            raw_value: text[match.begin(0)...(range && range[:position] >= match.end(0) ? range[:position] + range[:raw_value].length : boundary)].to_s.strip,
-            confidence: "candidate" }
-        end.compact.uniq { |candidate| candidate[:value] }
+          segment = model_segment(text, match.end(0), range, boundary)
+          models = catalog_vehicle_matches(make, segment)
+          if models.empty?
+            candidate_model = model_candidate(text, match.end(0), range, boundary)
+            models = candidate_model.present? ? [ { make: make, model: candidate_model } ] : []
+          end
+          raw_value = text[match.begin(0)...(range && range[:position] >= match.end(0) ? range[:position] + range[:raw_value].length : boundary)].to_s.strip
+          models.compact.map do |vehicle|
+            value = { "make" => vehicle[:make], "model" => vehicle[:model],
+              "year_start" => range&.fetch(:start_year, nil), "year_end" => range&.fetch(:end_year, nil),
+              "year_range_status" => range&.fetch(:interpretation_status, nil) }
+            if vehicle[:make] != make
+              value["source_make"] = make
+              value["make_match_status"] = vehicle[:make_match_status] || "catalog_make_mismatch"
+            end
+            { type: "vehicle_candidate", value: value.compact,
+              raw_value: raw_value, confidence: "candidate" }
+          end
+        end.flatten.uniq { |candidate| candidate[:value] }
       end
 
       private
@@ -46,11 +56,78 @@ module Automotive
       end
 
       def model_candidate(text, start_at, range, boundary)
-        finish = [ boundary, range && range[:position] > start_at ? range[:position] : boundary ].min
-        segment = text[start_at...finish].to_s
+        segment = model_segment(text, start_at, range, boundary)
         words = segment.scan(/[A-Za-z0-9][A-Za-z0-9-]*/).take_while { |word| !MODEL_STOP.match?(word) }
         candidate = words.first(3).join(" ")
         candidate unless candidate.empty?
+      end
+
+      def model_segment(text, start_at, range, boundary)
+        finish = [ boundary, range && range[:position] > start_at ? range[:position] : boundary ].min
+        text[start_at...finish].to_s
+      end
+
+      def catalog_vehicle_matches(make_name, segment)
+        return [] unless defined?(VehicleMake) && VehicleMake.table_exists?
+
+        make_record = VehicleMake.find_by(normalized_name: normalize(make_name))
+        searchable = normalize(segment.split(/[[:space:]]+/).take_while { |word| !MODEL_STOP.match?(word) }.join(" "))
+        return [] if searchable.empty?
+
+        hits = matching_catalog_models(searchable)
+        exact_make_hits = hits.select { |hit| hit[:make_id] == make_record&.id }
+        selected = non_overlapping(exact_make_hits)
+        return selected.map { |hit| { make: hit[:make_name], model: hit[:name].upcase } } if selected.any?
+
+        hits.reject! { |hit| hit[:normalized_name].match?(/\A[a-z]\d\z/) }
+        return [] if hits.empty?
+
+        selected = non_overlapping(hits)
+        make_scores = selected.group_by { |hit| hit[:make_id] }.transform_values { |models| models.map { |hit| hit[:normalized_name] }.uniq.length }
+        top_score = make_scores.values.max
+        leading_makes = make_scores.select { |_id, score| score == top_score }.keys
+        if leading_makes.one?
+          selected.select { |hit| hit[:make_id] == leading_makes.first }
+            .map { |hit| { make: hit[:make_name], model: hit[:name].upcase } }
+        else
+          selected.map do |hit|
+            { make: make_name, model: hit[:name].upcase, make_match_status: "ambiguous_catalog_make" }
+          end.uniq { |hit| hit[:model] }
+        end
+      rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
+        []
+      end
+
+      def matching_catalog_models(searchable)
+        VehicleModel.joins(:vehicle_make).where(normalized_name: phrase_terms(searchable))
+          .pluck(:id, :name, :normalized_name, :vehicle_make_id, "vehicle_makes.name")
+          .filter_map do |_id, name, normalized_name, make_id, make_name|
+            normalized_name = normalize(normalized_name)
+            next if normalized_name.empty?
+
+            match = /(?<![[:alnum:]])#{Regexp.escape(normalized_name)}(?![[:alnum:]])/.match(searchable)
+            { start: match.begin(0), finish: match.end(0), name: name, normalized_name: normalized_name,
+              make_id: make_id, make_name: make_name } if match
+          end
+      end
+
+      def non_overlapping(hits)
+        selected = []
+        hits.sort_by { |hit| [ hit[:start], -(hit[:finish] - hit[:start]) ] }.each do |hit|
+          selected << hit unless selected.any? { |existing| hit[:start] < existing[:finish] && existing[:start] < hit[:finish] }
+        end
+        selected.sort_by { |hit| hit[:start] }
+      end
+
+      def normalize(value)
+        value.to_s.unicode_normalize(:nfkc).strip.downcase.gsub(/\s+/, " ")
+      end
+
+      def phrase_terms(value)
+        words = value.split
+        (1..[ words.length, 6 ].min).flat_map do |length|
+          (0..words.length - length).map { |start| words[start, length].join(" ") }
+        end.uniq
       end
     end
   end

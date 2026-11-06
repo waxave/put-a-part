@@ -1,5 +1,7 @@
 module CatalogIntelligence
   class MarkAssertionReviewed
+    include ServiceCall
+
     def call(observation, claim_index:, value:)
       candidate = VehicleCandidate.find_by(catalog_observation: observation, claim_index: claim_index)
       if candidate && value.is_a?(Hash)

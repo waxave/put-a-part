@@ -1,6 +1,6 @@
 # Current implementation audit
 
-This document summarizes current runtime behavior and known gaps. The older [ETL architecture plan](automotive-catalog-etl-architecture-plan.md) is retained as design history; it includes an API and external research/review workflow that are not current application features.
+This document summarizes current runtime behavior and known gaps. The older [ETL architecture plan](automotive-catalog-etl-architecture-plan.md) is retained as design history; its API and broader research review/publishing workflow are not current application features.
 
 ## Implemented
 
@@ -10,16 +10,17 @@ This document summarizes current runtime behavior and known gaps. The older [ETL
 - Shared parsers for source product attributes, selected engine/specification candidates, vehicle description candidates, references and ring dimensions.
 - Six-sheet XLSX export from the checked-in template. The `Atributos` sheet uses the seeded/versioned `attribute_definitions` catalog for Spanish labels and units. Unknown fact types and vehicle candidates are omitted; duplicate values collapse and conflicting values are withheld.
 - Local gor3a and VehiclesDB SQLite vehicle-catalog import and PostgreSQL search projection. These provide local reference matching only; they do not establish part fitment.
+- Automatic Autofacts v2.3.0 research for eligible rows after extraction; a direct part lookup precedes a delayed search fallback. Findings and extracted fallbacks are applied as candidates before export, and downloads wait for finalization.
 - RSpec, Rails tests, RuboCop and configured security checks. CI runs the idempotent test seed before tests; it does not replant the test database.
 
 ## Explicitly out of scope
 
 - JSON API endpoints.
-- External catalog providers, automated searches, enrichment jobs and UI review/publication flow.
+- Generalized external provider review and publication workflow beyond the current Autofacts research.
 - Claims that candidate facts or local vehicle matches are verified fitments or interchanges.
 - Licensed VCdb/PCdb/PAdb datasets and certified ACES/PIES conformance.
 
-Historical records and normalized data structures related to the retired research workflow are retained for compatibility and preservation. Their presence does not mean the workflow is active.
+Historical records from earlier research workflows are retained; they do not imply that a general review or publication workflow is active.
 
 ## Remaining risks and work
 

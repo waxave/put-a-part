@@ -6,7 +6,7 @@ RSpec.describe Etl::ReprocessRun do
   it "rejects a run without an input attachment" do
     original = ProcessingRun.create!(status: "failed")
 
-    expect { described_class.new.call(original) }.to raise_error(described_class::InvalidRun)
+    expect { described_class.call(original) }.to raise_error(described_class::InvalidRun)
     expect(ProcessingRun.count).to eq(1)
   end
 
@@ -15,7 +15,7 @@ RSpec.describe Etl::ReprocessRun do
     path = Rails.root.join("spec/fixtures/files/input_prueba.xlsx")
     original.input_file.attach(io: File.open(path, "rb"), filename: "input_prueba.xlsx")
 
-    expect { described_class.new.call(original) }.to raise_error(described_class::InvalidRun)
+    expect { described_class.call(original) }.to raise_error(described_class::InvalidRun)
     expect(enqueued_jobs).to be_empty
   end
 
@@ -24,7 +24,11 @@ RSpec.describe Etl::ReprocessRun do
     path = Rails.root.join("spec/fixtures/files/input_prueba.xlsx")
     original.input_file.attach(io: File.open(path, "rb"), filename: "input_prueba.xlsx")
     release = KnowledgeRelease.create!(entries: [])
-    run = described_class.new.call(original, knowledge_release_id: release.id)
+    expect do
+      run = described_class.call(original, knowledge_release_id: release.id)
+      expect(run.knowledge_release_id).to eq(release.id)
+    end.to have_enqueued_job(ProcessCatalogJob).on_queue("etl")
+    run = ProcessingRun.order(:created_at).last
     expect(run.knowledge_release_id).to eq(release.id)
     expect(original.reload.knowledge_release_id).to be_nil
   end

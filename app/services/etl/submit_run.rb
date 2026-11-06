@@ -2,6 +2,8 @@ require "zip"
 
 module Etl
   class SubmitRun
+    include ServiceCall
+
     class InvalidUpload < StandardError; end
     MAX_BYTES = 20.megabytes
     MAX_EXPANDED_BYTES = 100.megabytes
