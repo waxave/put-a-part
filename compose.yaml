@@ -1,0 +1,114 @@
+name: put-a-part
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile.local
+  image: put-a-part-local
+  environment: &app-environment
+    RAILS_ENV: development
+    PGHOST: db
+    PGPORT: 5432
+    PGUSER: postgres
+    PGPASSWORD: ${DOCKER_POSTGRES_PASSWORD:?Set DOCKER_POSTGRES_PASSWORD in .env.docker}
+    REDIS_URL: redis://redis:6379/0
+    AUTOFACTS_DATABASE_PATH: /rails/var/autofacts/autofacts.sqlite3
+    APP_USERNAME: ${APP_USERNAME:?Set APP_USERNAME in .env.docker}
+    APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD in .env.docker}
+  volumes:
+    - storage:/rails/storage
+    - autofacts:/rails/var/autofacts
+
+services:
+  db:
+    image: postgres:18.1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:?Set DOCKER_POSTGRES_PASSWORD in .env.docker}
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h db -U \"$$POSTGRES_USER\" -d postgres -tAc 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:8.8.0
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  init:
+    <<: *app
+    command:
+      - sh
+      - -c
+      - >-
+        bin/rails db:prepare &&
+        bin/rails db:seed &&
+        bundle exec autofacts install &&
+        bin/rails automotive_catalog:import SOURCE=gor3a SQLITE_PATH=/vehicle-data/gor3a.sqlite APPLY=true &&
+        bin/rails automotive_catalog:import SOURCE=vehiclesdb SQLITE_PATH=/vehicle-data/vehiclesdb.sqlite VEHICLESDB_ATTRIBUTION_PATH=/vehicle-data/ATTRIBUTION.md APPLY=true &&
+        bin/rails automotive_catalog:rebuild_vehicle_search
+    volumes:
+      - storage:/rails/storage
+      - autofacts:/rails/var/autofacts
+      - type: bind
+        source: ./data
+        target: /vehicle-data
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    <<: *app
+    command: ["bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]
+    ports:
+      - "127.0.0.1:${DOCKER_WEB_PORT:-3000}:3000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *app
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  import:
+    <<: *app
+    profiles: ["import"]
+    volumes:
+      - storage:/rails/storage
+      - autofacts:/rails/var/autofacts
+      - type: bind
+        source: ./data
+        target: /vehicle-data
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["bin/rails", "-T", "automotive_catalog"]
+
+volumes:
+  postgres:
+  redis:
+  storage:
+  autofacts:

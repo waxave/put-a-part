@@ -9,6 +9,10 @@
 
 # Ignore all environment files.
 /.env*
+/data/
+/autofacts.sqlite3*
+/db/autofacts.sqlite3*
+/dump.rdb
 
 # Ignore all default key files.
 /config/master.key

@@ -1,0 +1,7 @@
+[tools]
+postgres = "18.1"
+redis = "8.8.0"
+ruby = "4.0.9"
+
+[env]
+_.file = [".env", ".env.local"]
