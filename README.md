@@ -1,43 +1,270 @@
 # Put a Part
 
-Put a Part es una aplicación para procesar archivos de proveedores de autopartes. Extrae datos de productos respaldados por la fuente y candidatos de vehículos y especificaciones, y genera un catálogo trazable de seis hojas en Excel. No realiza búsquedas en catálogos externos ni presenta aplicaciones no verificadas como ajustes confirmados.
+Put a Part es una aplicación Rails para procesar archivos de proveedores de autopartes. Extrae datos de producto respaldados por la fuente y candidatos de vehículos y especificaciones, investiga piezas con Autofacts y genera un catálogo trazable de seis hojas en Excel.
 
-El proyecto implementa una primera versión funcional del procesamiento, no toda la plataforma ETL propuesta. Consulta [Arquitectura](ARCHITECTURE.md) y [Hoja de ruta](ROADMAP.md) para conocer el estado actual. El [plan de arquitectura e implementación](docs/automotive-catalog-etl-architecture-plan.md) es una propuesta histórica y no describe el comportamiento actual.
+Las aplicaciones, los intercambios y las afirmaciones externas son **candidatos no verificados**, no compatibilidades confirmadas. Consulta [Arquitectura](ARCHITECTURE.md) y [Hoja de ruta](ROADMAP.md) para el estado actual y los límites del sistema. El [plan de arquitectura ETL](docs/automotive-catalog-etl-architecture-plan.md) es una propuesta histórica y no describe el comportamiento actual.
 
-## Configuración de desarrollo
+## Stack
 
-- Se requieren Ruby 4.0.9, Bundler, Rails 8.1, PostgreSQL y Redis.
-- Configura `PGHOST`, `PGPORT`, `PGUSER` y `PGPASSWORD` para un rol de PostgreSQL con permisos para crear bases de datos locales. De forma predeterminada se usa `localhost:5432` y el usuario `postgres`. También puedes configurar `DATABASE_URL`, la variable estándar de Rails.
-- La interfaz de archivos no requiere autenticación y está pensada para una red local de confianza. Configura `APP_USERNAME` y `APP_PASSWORD` con valores no vacíos para proteger el panel `/sidekiq`; protege la aplicación y los archivos cargados mediante la red y el entorno de despliegue.
-- Define `REDIS_URL` si Redis no está disponible en `redis://127.0.0.1:6379/0`. Instala las dependencias y prepara la base de datos con `bin/setup --skip-server`. `bin/dev` inicia Rails y Sidekiq. Si inicias Rails por separado, inicia también un worker con `bundle exec sidekiq -C config/sidekiq.yml`.
-- Después de aplicar migraciones a una base de datos existente, ejecuta `bin/rails db:seed` para instalar o actualizar el catálogo versionado de atributos en español que se usa en las exportaciones XLSX.
-- Ejecuta las pruebas RSpec con `bundle exec rspec`, las pruebas Rails con `bin/rails test`, las comprobaciones de estilo con `bin/rubocop` y el flujo de CI con `bin/ci`.
-- `bin/setup` limpia los registros y archivos temporales. `bin/ci` ejecuta `db:seed` en el entorno de pruebas antes de correrlas; revisa su configuración antes de ejecutarla contra cualquier base de datos.
+- **Ruby 4.0.9**, **Rails 8.1**, Bundler y PostgreSQL.
+- Active Job con **Sidekiq** y **Redis**; Active Storage local.
+- **Autofacts** con su propio catálogo SQLite (`config/autofacts.yml`, predeterminado: `autofacts.sqlite3`).
+- **Hotwire** (Turbo y Stimulus), import maps y Propshaft; no se requiere Node.js.
+- Pruebas con **Minitest** y **RSpec**, además de RuboCop, Brakeman y bundler-audit.
 
-La aplicación acepta archivos XLSX con el formato de ejemplo `Origen` o el formato genérico `Products`, cuyas columnas se pueden mapear, y exporta las seis hojas de la plantilla. `Catálogo` contiene campos de producto respaldados por la fuente; la taxonomía queda vacía cuando no se puede resolver. `Atributos` utiliza el catálogo versionado `attribute_definitions` para las clases, nombres y unidades en español. Entre los datos admitidos están el código y la familia del motor, el número de cilindros y válvulas, la cilindrada, el tipo de árbol de levas, algunos atributos de producto y las dimensiones de anillos. Los datos desconocidos y los candidatos de vehículos no se exportan como atributos. Se conserva la confianza de cada candidato y su evidencia de origen: estos datos no son especificaciones, aplicaciones ni intercambios verificados. La extracción de años usa el umbral de dos dígitos 30; la interpretación del texto de vehículos es léxica y solo genera candidatos. La extracción de cilindrada es heurística y no la vincula con un vehículo o motor específico. La búsqueda en referencias locales de vehículos no demuestra que una pieza sea compatible. El identificador de conocimiento `empty-v1` representa una base inicial de resolución vacía. Los archivos se guardan mediante Active Storage local; cambiar la configuración de la base de datos no migra ni elimina archivos SQLite anteriores.
+La interfaz es bilingüe con español por defecto. Admite dos perfiles XLSX: `Origen` (formato de ejemplo) y `Products` (columnas mapeables). Para cada pieza elegible se ejecuta la investigación de Autofacts antes de la exportación; la descarga se habilita al finalizar.
 
-La interfaz web bilingüe está en `/`, con español como idioma predeterminado y un selector de idioma en el encabezado. No hay una API JSON. Los procesamientos en cola se pueden cancelar de inmediato; los que ya están activos se detienen en puntos de control. Los procesamientos finalizados con un archivo de entrada se pueden volver a ejecutar como nuevos procesamientos usando el perfil y las reglas actuales. Como la interfaz no tiene inicio de sesión, despliega la aplicación únicamente en un entorno de confianza y protege los archivos cargados y descargados, PostgreSQL, Redis y el almacenamiento persistente en la capa de red y despliegue. El panel de Sidekiq tiene protección independiente en `/sidekiq`.
+> **Sin autenticación.** La aplicación no tiene inicio de sesión. No la expongas a redes no confiables; el panel de Sidekiq en `/sidekiq` se protege por separado con `APP_USERNAME` y `APP_PASSWORD`.
 
-## Extracción y referencias de vehículos
+## Requisitos
 
-El procesamiento extrae los datos y genera la exportación de inmediato. El comportamiento actual no incluye búsquedas en proveedores externos ni flujos de investigación o revisión. Los datos extraídos de vehículos y especificaciones siguen siendo candidatos, no aplicaciones verificadas. Se conservan los procesamientos, observaciones y versiones de conocimiento existentes. El catálogo normalizado de vehículos se utiliza para búsquedas locales y es independiente de la investigación externa.
+- [mise](https://mise.jdx.dev/getting-started.html) para fijar las versiones de Ruby, PostgreSQL y Redis.
+- Git y las herramientas de compilación/bibliotecas de desarrollo que requiera tu sistema (compilador C/C++, `make`, OpenSSL, libyaml, zlib, libpq y SQLite). Los nombres de los paquetes dependen de la distribución.
+- Para las pruebas de sistema: un navegador y su controlador compatibles con Selenium.
 
-Los rangos de años aceptan barras o guiones y años de dos o cuatro dígitos (por ejemplo, `99/04`, `1999/04`, `99/2004`, `1999-2004`). El umbral predeterminado para años de dos dígitos es 30 (`00–30` → 2000–2030; `31–99` → 1931–1999). Los resultados siguen siendo candidatos y se señalan los rangos implausibles. Cambia `year_cutoff:` en `Automotive::Parsers::DescriptionParser.call` solo al versionar explícitamente un nuevo conjunto de reglas. Las tablas normalizadas conservan variantes exactas de piezas, afirmaciones de origen, candidatos de vehículos e identificadores externos ACES/PIES opcionales. Los adaptadores SQLite locales importan los formatos documentados de gor3a y VehiclesDB. La asociación de candidatos con referencias locales no demuestra compatibilidad entre una pieza y un vehículo. No se incluye una base de datos con licencia VCdb/PCdb/PAdb ni un cliente de API de referencias de vehículos.
-
-### Importar el catálogo de referencias de vehículos
-
-El catálogo unificado de vehículos importa archivos SQLite proporcionados localmente a PostgreSQL. Admite los esquemas fijados de [gor3a/vehicle-makes-models](https://github.com/gor3a/vehicle-makes-models) y [VehiclesDB](https://github.com/vehiclesdb/vehiclesdb). Primero ejecuta una validación sin aplicar cambios:
+`mise.toml` fija **Ruby 4.0.9**, **PostgreSQL 18.1** y **Redis 8.8.0**, y carga `.env` y `.env.local`. Desde la raíz del repositorio:
 
 ```sh
-bin/rails automotive_catalog:import SOURCE=gor3a SQLITE_PATH=/data/vehicles.sqlite
-bin/rails automotive_catalog:import SOURCE=vehiclesdb SQLITE_PATH=/data/catalog.sqlite VEHICLESDB_ATTRIBUTION_PATH=/data/ATTRIBUTION.md
+mise trust
+mise install
 ```
 
-Agrega `APPLY=true` para guardar los registros de origen y la jerarquía canónica de marca, modelo, generación y motor. Las importaciones se procesan en lotes, se pueden repetir y no descargan datos ni modifican procesamientos o versiones de conocimiento. Después de importar, crea la proyección de búsqueda de texto completo de PostgreSQL con `bin/rails automotive_catalog:rebuild_vehicle_search`.
+Esto instala los ejecutables, pero **no inicializa ni inicia los servidores** de PostgreSQL y Redis: tienes que hacerlo aparte (ver más abajo).
 
-La importación registra la revisión de origen, el SHA-256 del artefacto, la licencia y la atribución. La importación de VehiclesDB requiere el archivo `ATTRIBUTION.md` correspondiente junto al artefacto o en la ruta indicada por la variable de entorno, y guarda sus avisos de origen. Los **datos** de gor3a usan ODbL 1.0 (atribución a vehicle-makes-models y autoevolution.com, con obligaciones de compartir bajo la misma licencia); VehiclesDB usa CC-BY 4.0 y requiere su crédito y los avisos del registro de origen. Revisa esos términos antes de distribuir una base de datos combinada o derivada. Las descargas independientes de vPIC están destinadas a decodificar VIN y no se importan como taxonomía de vehículos. Este catálogo está orientado a ACES/PIES, pero no está certificado ni declara conformidad; los identificadores oficiales con licencia y la validación contra versiones objetivo son tareas independientes.
+## Configuración
 
-La asociación de candidatos de vehículos solo utiliza el catálogo de referencias importado localmente. La extracción del texto del modelo es conservadora: las especificaciones y los términos de motor delimitan el texto del modelo, y las coincidencias ambiguas deben permanecer sin resolver en lugar de tratarse como aplicaciones confirmadas.
+Crea un archivo de entorno local a partir del ejemplo y edítalo con tus valores:
+
+```sh
+cp .env.example .env.local
+```
+
+```sh
+PGUSER = "some_user"
+PGPASSWORD = "some_password"
+APP_USERNAME = "some_user"
+APP_PASSWORD = "some_password"
+```
+
+Variables de conexión relevantes (con sus valores predeterminados):
+
+| Variable | Predeterminado | Uso |
+|---|---|---|
+| `PGHOST` | `localhost` | Host de PostgreSQL |
+| `PGPORT` | `5432` | Puerto de PostgreSQL |
+| `PGUSER` | `postgres` | Usuario de PostgreSQL |
+| `PGPASSWORD` | — | Contraseña de PostgreSQL |
+| `REDIS_URL` | `redis://127.0.0.1:6379/0` | Conexión a Redis |
+| `DATABASE_URL` | — | Alternativa estándar a las variables `PG*` |
+| `APP_USERNAME` / `APP_PASSWORD` | — | Credenciales del panel `/sidekiq` |
+| `AUTOFACTS_DATABASE_PATH` | `autofacts.sqlite3` | Ruta opcional del SQLite de Autofacts |
+
+`.env` y `.env.local` están ignorados por Git: no publiques contraseñas.
+
+## Ejecutar con mise
+
+### 1. Iniciar PostgreSQL y Redis
+
+Inicia un servidor PostgreSQL y uno Redis con los servicios de tu sistema o con instancias locales ya configuradas. En PostgreSQL necesitas un rol con permiso para crear `put_a_part_development` y `put_a_part_test`.
+
+Si no tienes servidores y quieres crear instancias nuevas con los ejecutables de mise, este es un ejemplo para desarrollo. Elige un directorio que **no exista**:
+
+```sh
+export PGDATA="$HOME/.local/share/put-a-part/postgres"
+mkdir -p "$(dirname "$PGDATA")"
+initdb -D "$PGDATA" -U postgres --auth-local=trust --auth-host=scram-sha-256 --pwprompt
+pg_ctl -D "$PGDATA" -l "$(dirname "$PGDATA")/postgres.log" start
+```
+
+Configura `PGUSER=postgres` y `PGPASSWORD` con esa contraseña. En otra terminal, inicia Redis:
+
+```sh
+redis-server --bind 127.0.0.1 --port 6379
+```
+
+Comprueba que están accesibles:
+
+```sh
+pg_isready -h "${PGHOST:-localhost}" -p "${PGPORT:-5432}"
+redis-cli -u "${REDIS_URL:-redis://127.0.0.1:6379/0}" ping
+```
+
+Redis debe responder `PONG`. No uses `initdb` ni `pg_ctl` con un directorio de datos ajeno.
+
+### 2. Instalar dependencias y preparar la base
+
+```sh
+bundle install
+bin/rails db:prepare
+bundle exec autofacts install
+bin/rails db:seed
+```
+
+O, en un solo paso idempotente que además limpia registros y archivos temporales:
+
+```sh
+bin/setup --skip-server
+```
+
+### 3. Iniciar la aplicación
+
+```sh
+bin/dev
+```
+
+Esto inicia Rails en <http://localhost:3000> y un worker Sidekiq. Para iniciar los procesos por separado:
+
+```sh
+bin/rails server
+```
+
+```sh
+bundle exec sidekiq -C config/sidekiq.yml
+```
+
+Abre <http://localhost:3000>, carga un archivo XLSX y sigue el progreso. El estado se consulta en <http://localhost:3000/up> y el panel del worker en <http://localhost:3000/sidekiq>.
+
+### 4. Pruebas y comprobaciones
+
+```sh
+bundle exec rspec
+bin/rails test
+bin/rubocop
+bin/ci
+```
+
+`bin/ci` ejecuta las comprobaciones y pruebas configuradas; revisa `config/ci.rb` antes de usarlo (carga semillas en la base de pruebas).
+
+## Ejecutar con mise y Make
+
+El `Makefile` envuelve los comandos anteriores. Los objetivos sin prefijo operan sobre la instalación local de mise; los objetivos con prefijo `docker-` operan sobre los contenedores.
+
+| Objetivo | Acción |
+|---|---|
+| `make help` | Lista todos los objetivos disponibles |
+| `make init` | `mise install` + `bundle install` + `db:prepare` + `db:seed` + `autofacts install` |
+| `make setup` | Alias de `make init` |
+| `make dev` | Inicia Rails y Sidekiq con `bin/dev` |
+| `make test` | Ejecuta RSpec y las pruebas Rails |
+| `make lint` | Ejecuta RuboCop |
+
+> `make init` **no inicia** PostgreSQL ni Redis: deja los servidores de la sección anterior en marcha antes de ejecutarlo. Tampoco crea `.env`; configúralo primero como se indica arriba.
+
+Ejemplo de flujo completo:
+
+```sh
+make init
+make dev
+make test
+make lint
+```
+
+### Referencias de vehículos con mise + Make
+
+Estos objetivos validan o importan los catálogos locales descritos en [Referencias de vehículos](#referencias-de-vehículos):
+
+```sh
+make vehicle-gor3a-check
+make vehicle-vehiclesdb-check
+```
+
+```sh
+make vehicle-gor3a-import
+make vehicle-vehiclesdb-import
+make vehicle-index
+```
+
+## Ejecutar con Docker y Make
+
+La configuración Docker usa `compose.yaml` y un archivo de entorno propio.
+
+### 1. Configurar el entorno Docker
+
+```sh
+cp .env.docker.example .env.docker
+```
+
+```sh
+DOCKER_POSTGRES_PASSWORD=replace-with-a-local-database-password
+APP_USERNAME=replace-with-a-dashboard-user
+APP_PASSWORD=replace-with-a-dashboard-password
+DOCKER_WEB_PORT=3000
+```
+
+### 2. Preparar los datos de vehículos
+
+El contenedor `init` importa automáticamente los catálogos. Coloca `gor3a.sqlite`, `vehiclesdb.sqlite` y el `ATTRIBUTION.md` correspondiente en `data/` antes de preparar Docker.
+
+### 3. Construir e iniciar
+
+```sh
+make docker-setup
+```
+
+Esto construye la imagen y levanta PostgreSQL, Redis, un proceso de preparación, Rails y Sidekiq. La preparación migra la base de desarrollo, carga las semillas y prepara Autofacts antes de iniciar `web` y `worker`.
+
+```sh
+make docker-ps
+make docker-logs
+make docker-down
+```
+
+- `make docker-ps` muestra el estado de los contenedores.
+- `make docker-logs` sigue los registros.
+- `make docker-down` detiene y elimina los contenedores **sin borrar los volúmenes** (PostgreSQL, Redis, Active Storage y el SQLite de Autofacts son persistentes).
+- `make docker-up` construye la imagen y reinicia los servicios; `make docker-init` y `make docker-setup` preparan e inician el entorno (equivalentes a `docker-up`).
+
+Abre <http://localhost:3000> (o el puerto de `DOCKER_WEB_PORT`). El servidor solo publica el puerto en `127.0.0.1`, pero la aplicación no tiene inicio de sesión: es una configuración de **desarrollo local**, no apta para producción.
+
+### Referencias de vehículos con Docker + Make
+
+```sh
+make docker-vehicle-gor3a-check
+make docker-vehicle-vehiclesdb-check
+```
+
+```sh
+make docker-vehicle-gor3a-import
+make docker-vehicle-vehiclesdb-import
+make docker-vehicle-index
+```
+
+Los objetivos `-import` escriben en el PostgreSQL de Docker y pueden tardar; no ejecutes importaciones simultáneas.
+
+## Referencias de vehículos
+
+La aplicación puede ejecutarse sin este catálogo, pero la búsqueda local de marcas, modelos y tipos de vehículo estará vacía hasta importarlo. Los archivos se guardan en `data/` **dentro del proyecto**:
+
+| Archivo | Contenido |
+|---|---|
+| `data/gor3a.sqlite` | Catálogo SQLite gor3a de marcas, modelos, generaciones y motores |
+| `data/vehiclesdb.sqlite` | Catálogo SQLite de VehiclesDB |
+| `data/ATTRIBUTION.md` | Avisos de atribución de la versión de VehiclesDB |
+
+Obtén los artefactos compatibles de [gor3a](https://github.com/gor3a/vehicle-makes-models) y [VehiclesDB](https://github.com/vehiclesdb/vehiclesdb), junto con la atribución de la misma versión. El importador no los descarga.
+
+Primero valida **sin modificar PostgreSQL** (objetivos `*-check`), y solo si tienes autorización impórtalos (`*-import`) y reconstruye el índice (`vehicle-index` / `docker-vehicle-index`).
+
+- Los datos de gor3a usan **ODbL 1.0**; VehiclesDB usa **CC-BY 4.0** y exige su crédito y los avisos de sus fuentes. Revisa las licencias antes de redistribuir.
+- Las coincidencias locales son candidatos y **no** demuestran compatibilidad de piezas.
+
+## Autofacts
+
+La investigación consulta primero la pieza por número y marca; si no obtiene un resultado utilizable, programa una búsqueda alternativa al menos 30 segundos después. Las observaciones y aplicaciones siguen siendo candidatas. Respeta las condiciones de acceso de AutoFactsDB.
+
+- Instalar o actualizar el esquema y la taxonomía local: `bundle exec autofacts install`.
+- Comprobar una búsqueda: `bundle exec autofacts subcategory "PISTONES"`.
+- Rails, `make init` y la CLI comparten `AUTOFACTS_DATABASE_PATH` o `config/autofacts.yml`.
+
+Tras cambiar las reglas o el catálogo, usa **Volver a procesar** para crear un nuevo procesamiento; los XLSX ya exportados no se modifican.
+
+## Solución de problemas
+
+- **No conecta a PostgreSQL:** revisa `pg_isready`, las variables `PG*`, la contraseña y los permisos de creación de bases.
+- **El procesamiento permanece en investigación:** comprueba Redis y que el worker de Sidekiq esté activo; la investigación externa requiere acceso autorizado a Autofacts.
+- **Falta Sistema o Subsistema:** comprueba `bundle exec autofacts subcategory "PISTONES"` y que Rails y la CLI usan la misma ruta de Autofacts.
+- **No se encuentran modelos:** verifica los archivos de `data/`, que importaste con `APPLY=true` (objetivos `*-import`) y que reconstruiste el índice.
+- **No hay descarga:** espera a que termine la investigación y la generación del archivo; revisa las incidencias y el panel de Sidekiq.
 
 ## Documentación
 
